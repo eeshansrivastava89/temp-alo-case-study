@@ -12,12 +12,12 @@ python3 -m venv .venv
 .venv/bin/streamlit run app.py
 ```
 
-LLM configuration is explicit and provider-independent. Example for OpenRouter and NVIDIA Nemotron 3.5 Lightning:
+LLM configuration is explicit and provider-independent. Example for Ollama Cloud and GLM-5.3:
 
 ```bash
-export LLM_PROVIDER="OpenRouter"
-export LLM_MODEL="nvidia/nemotron-3.5-lightning:free"
-export LLM_BASE_URL="https://openrouter.ai/api/v1"
+export LLM_PROVIDER="Ollama Cloud"
+export LLM_MODEL="glm-5.3:cloud"
+export LLM_BASE_URL="https://ollama.com/v1/"
 export LLM_API_KEY="..."
 ```
 
