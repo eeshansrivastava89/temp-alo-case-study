@@ -114,10 +114,16 @@ def source_files_for(evidence: list[dict]) -> list[str]:
 def scope_line(evidence: list[dict]) -> str:
     period = next((item.get("period") for item in evidence if item.get("period")), None)
     comparison = next((item.get("comparison") for item in evidence if item.get("comparison")), None)
+    forecast_period = next((item.get("forecast_period") for item in evidence if item.get("forecast_period")), None)
+    baseline_period = next((item.get("baseline_period") for item in evidence if item.get("baseline_period")), None)
     pieces = []
-    if period:
+    if forecast_period:
+        pieces.append(f"Forecast: {forecast_period.get('start')} to {forecast_period.get('end')}")
+    elif period:
         pieces.append(f"{period.get('start')} to {period.get('end')}")
-    if comparison:
+    if baseline_period:
+        pieces.append(f"vs. observed: {baseline_period.get('start')} to {baseline_period.get('end')}")
+    elif comparison:
         pieces.append(f"vs. {comparison.get('label')}")
     sources = sources_for(evidence)
     if sources:
@@ -247,11 +253,25 @@ def render_forecast_exhibit(results: list[dict]) -> None:
     if series:
         chart = pd.DataFrame(series).pivot(index="Date", columns="Metric", values="Forecast")
         st.line_chart(chart)
-        totals = [
-            {"Metric": result["metric_label"], "Forecast": money(result["forecast_total"]), "vs. latest": percent(result["change_vs_recent"]["percent"])}
-            for result in results[:2]
-        ]
-        st.dataframe(pd.DataFrame(totals), hide_index=True, width="stretch", height=110)
+        totals = []
+        for result in results[:2]:
+            forecast = result["forecast_period"]
+            baseline = result["baseline_period"]
+            totals.extend(
+                [
+                    {
+                        "Measure": f"Observed baseline · {baseline['start']} to {baseline['end']}",
+                        result["metric_label"]: money(result["recent_baseline_total"]),
+                        "Change": "—",
+                    },
+                    {
+                        "Measure": f"Forecast · {forecast['start']} to {forecast['end']}",
+                        result["metric_label"]: money(result["forecast_total"]),
+                        "Change": percent(result["change_vs_recent"]["percent"]),
+                    },
+                ]
+            )
+        st.dataframe(pd.DataFrame(totals), hide_index=True, width="stretch", height=145)
 
 
 def render_primary_exhibit(evidence: list[dict]) -> None:
@@ -345,12 +365,15 @@ def render_assistant_message(message: dict) -> None:
 
 
 repo = repository()
-available = repo.available_period()
+inventory = source_inventory()
+available_start = min(item["date_min"] for item in inventory)
+available_end = max(item["date_max"] for item in inventory)
+available_days = (pd.Timestamp(available_end) - pd.Timestamp(available_start)).days + 1
 llm_config, missing_settings = configured_llm()
 model_label = llm_config.display_name if llm_config else "LLM not configured"
 
 st.title("AI Business Analyst")
-st.caption(f"Data available {available.start} to {available.end} · {available.days} days · {model_label}")
+st.caption(f"Data available {available_start} to {available_end} · {available_days} days · {model_label}")
 
 if missing_settings:
     st.warning(f"Add the required Streamlit Secrets to enable the analyst: {', '.join(missing_settings)}")

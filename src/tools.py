@@ -361,7 +361,10 @@ def forecast_metric(
     predictions = _seasonal_median_predictions(history, future_dates)
     forecast_total = float(predictions.sum())
     interval = 1.96 * float(np.std(residuals, ddof=1)) * np.sqrt(horizon_days)
-    baseline_total = float(history["value"].iloc[-horizon_days:].sum())
+    baseline = history.iloc[-horizon_days:]
+    baseline_total = float(baseline["value"].sum())
+    baseline_start = baseline["date"].iloc[0].date().isoformat()
+    baseline_end = baseline["date"].iloc[-1].date().isoformat()
 
     return {
         "tool": "forecast_metric",
@@ -369,6 +372,12 @@ def forecast_metric(
         "metric_label": definition.label,
         "forecast_period": {"start": future_dates.iloc[0].date().isoformat(), "end": future_dates.iloc[-1].date().isoformat()},
         "forecast_total": forecast_total,
+        "baseline_period": {
+            "start": baseline_start,
+            "end": baseline_end,
+            "days": horizon_days,
+            "label": f"Observed prior {horizon_days} days: {baseline_start} to {baseline_end}",
+        },
         "recent_baseline_total": baseline_total,
         "change_vs_recent": _change(forecast_total, baseline_total),
         "interval_95_approx": {"lower": max(0, forecast_total - interval), "upper": forecast_total + interval},
@@ -377,7 +386,7 @@ def forecast_metric(
             {"date": day.date().isoformat(), "value": float(value)}
             for day, value in zip(future_dates, predictions, strict=True)
         ],
-        "method": "Median of the previous four observations for each weekday; the latest seven days are held out for validation.",
+        "method": "Each forecast day is the median of the prior four observations for that weekday; the comparison baseline is the observed total for the immediately preceding matched days, and the latest seven observed days are also held out for validation.",
         "notes": [
             CONTEXT_NOTES[definition.context],
             "Directional prototype forecast; promotions, inventory, spend, holidays, weather, and market plans are unavailable.",

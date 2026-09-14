@@ -122,6 +122,7 @@ st.dataframe(pd.DataFrame(store_rows), hide_index=True, width="stretch")
 
 st.divider()
 st.header("Directional seven-day forecast")
+st.caption("Forecasts begin after the final observed date and use the immediately preceding seven observed days as the comparison baseline; this rolling window differs from the complete-week KPI period above.")
 forecast_columns = st.columns(2)
 for column, forecast in zip(forecast_columns, [data["digital_forecast"], data["store_forecast"]], strict=True):
     column.metric(
@@ -129,7 +130,14 @@ for column, forecast in zip(forecast_columns, [data["digital_forecast"], data["s
         money(forecast["forecast_total"]),
         f"{forecast['change_vs_recent']['percent']:+.1%} vs latest 7 days",
     )
-    column.caption(f"Four-week weekday median · holdout MAPE {forecast['validation']['mape']:.1%}")
+    forecast_period = forecast["forecast_period"]
+    baseline_period = forecast["baseline_period"]
+    column.caption(
+        f"Forecast: {forecast_period['start']} to {forecast_period['end']} · "
+        f"Observed baseline: {baseline_period['start']} to {baseline_period['end']} "
+        f"({money(forecast['recent_baseline_total'])}) · Four-week weekday median · "
+        f"Holdout MAPE {forecast['validation']['mape']:.1%}"
+    )
 
 with st.expander("Data boundaries"):
     st.markdown(

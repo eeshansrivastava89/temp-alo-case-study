@@ -84,11 +84,19 @@ class AnalyticsContractTests(unittest.TestCase):
             {"Store Revenue", "Store Traffic", "Store Orders", "Store Units", "Store Conversion", "Store AOV", "Store UPT"},
         )
 
-    def test_forecast_is_positive_and_validated(self) -> None:
+    def test_forecast_is_positive_validated_and_contiguous_with_baseline(self) -> None:
         result = forecast_metric(self.repo, "digital_revenue")
         self.assertGreater(result["forecast_total"], 0)
         self.assertEqual(len(result["daily_forecast"]), 7)
         self.assertIsNotNone(result["validation"]["mape"])
+        self.assertEqual(
+            (result["baseline_period"]["start"], result["baseline_period"]["end"]),
+            ("2026-06-28", "2026-07-04"),
+        )
+        self.assertEqual(
+            (result["forecast_period"]["start"], result["forecast_period"]["end"]),
+            ("2026-07-05", "2026-07-11"),
+        )
 
 
 if __name__ == "__main__":

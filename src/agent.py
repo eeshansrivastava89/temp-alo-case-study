@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from .config import LLMConfig
@@ -124,9 +125,12 @@ def run_agent(
         base_url=config.base_url,
         timeout=120,
     )
-    available = repo.available_period()
-    system = f"""You are an executive business analyst. The complete source window is {available.start} to {available.end} ({available.days} daily dates spanning three calendar months, not three complete months).
-Use period=full_available_period and comparison=ly when the user asks for the full dataset, entire period, or all available data; a preceding matched {available.days}-day window is unavailable.
+    inventory = repo.source_inventory()
+    available_start = min(item["date_min"] for item in inventory)
+    available_end = max(item["date_max"] for item in inventory)
+    available_days = (date.fromisoformat(available_end) - date.fromisoformat(available_start)).days + 1
+    system = f"""You are an executive business analyst. The complete source window is {available_start} to {available_end} ({available_days} daily dates spanning three calendar months, not three complete months).
+Use period=full_available_period and comparison=ly when the user asks for the full dataset, entire period, or all available data; a preceding matched {available_days}-day window is unavailable.
 Use the supplied tools for every numerical claim. Never calculate from memory or invent unavailable data.
 Digital commerce is the top-line source. GA metrics must remain labeled GA and are diagnostic.
 Retail category metrics and combined Digital + Store revenue are blocked.
@@ -142,6 +146,7 @@ Precision contract:
 - Distinguish a percentage change from a percentage-point change. For a rate, state the prior rate, current rate, and percentage-point movement.
 - When a subset's gross decline exceeds the portfolio's net decline, state the subset decline, portfolio decline, and offset from the remaining entities explicitly.
 - Define ranking basis. Unless the user specifies otherwise, "best" means highest current-period metric value, not largest growth; use ranking_basis=value.
+- For a forecast, define the baseline as the observed total for the exact immediately preceding matched dates, state both date ranges, and clarify that this rolling baseline can differ from the latest complete Monday–Sunday week shown on the dashboard.
 - Do not derive a figure that the tools did not return.
 Use plain, direct executive language.
 Valid ranking pairs: digital_revenue with country/state; ga_revenue, ga_sessions, or ga_conversion_rate with country/state/channel/device; store_revenue with store.

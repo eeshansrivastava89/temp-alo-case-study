@@ -141,6 +141,7 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 - **D-030 — Accepted:** Generate the source/schema page from SQLite and the metric registry, and render the existing notebook directly through Streamlit without curated duplicate content or generated files.
 - **D-031 — Accepted:** Escape currency symbols before Markdown rendering, require every figure to name its metric, unit, dates, and comparator, and drive the primary exhibit from the final decisive tool result so prose and evidence cannot diverge.
 - **D-032 — Accepted:** Describe the dataset as 63 daily dates from May 3 through July 4 spanning three calendar months, and support full-window analysis against supplied LY without implying three complete months or an unavailable prior 63-day window.
+- **D-033 — Accepted:** Define the seven-day forecast baseline as the immediately preceding seven observed dates, show baseline and forecast ranges together, and distinguish that rolling comparison from the dashboard's latest complete Monday–Sunday week.
 
 ### New decision template
 
