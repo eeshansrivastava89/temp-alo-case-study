@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-from .config import LLMConfig
-from .repository import AnalyticsRepository
-from .tools import dispatch_tool
+from config import LLMConfig
+from repository import AnalyticsRepository
+from tools import dispatch_tool
 
 
 @dataclass

@@ -3,16 +3,21 @@ from __future__ import annotations
 from datetime import date, timedelta
 from pathlib import Path
 import re
+import sys
 
 import pandas as pd
 import streamlit as st
 
-from src.agent import run_agent
-from src.config import load_llm_config
-from src.repository import AnalyticsRepository
-from src.semantic_model import CONTEXT_VIEWS
-
 ROOT = Path(__file__).resolve().parents[1]
+SRC_PATH = ROOT / "src"
+if str(SRC_PATH) not in sys.path:
+    sys.path.insert(0, str(SRC_PATH))
+
+from agent import run_agent
+from config import load_llm_config
+from repository import AnalyticsRepository
+from semantic_model import CONTEXT_VIEWS
+
 DB_PATH = ROOT / "data" / "analytics.db"
 MESSAGE_SCHEMA_VERSION = 3
 

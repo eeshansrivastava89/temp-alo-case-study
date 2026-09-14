@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Iterator
 
-from .semantic_model import Metric, get_metric, validate_dimension
+from semantic_model import Metric, get_metric, validate_dimension
 
 
 @dataclass(frozen=True)

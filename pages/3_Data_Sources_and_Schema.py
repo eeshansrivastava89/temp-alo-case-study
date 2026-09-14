@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 import pandas as pd
 import streamlit as st
 
-from src.repository import AnalyticsRepository
-from src.semantic_model import CONTEXT_LABELS, DIMENSIONS, METRICS
-
 ROOT = Path(__file__).resolve().parents[1]
+SRC_PATH = ROOT / "src"
+if str(SRC_PATH) not in sys.path:
+    sys.path.insert(0, str(SRC_PATH))
+
+from repository import AnalyticsRepository
+from semantic_model import CONTEXT_LABELS, DIMENSIONS, METRICS
+
 DB_PATH = ROOT / "data" / "analytics.db"
 
 

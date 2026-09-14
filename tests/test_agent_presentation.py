@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+import sys
 import unittest
 
-from src.agent import _finalize_submission
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from agent import _finalize_submission
 
 
 class AgentPresentationTests(unittest.TestCase):

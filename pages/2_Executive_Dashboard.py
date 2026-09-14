@@ -2,14 +2,19 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from pathlib import Path
+import sys
 
 import pandas as pd
 import streamlit as st
 
-from src.repository import AnalyticsRepository
-from src.tools import analyze_revenue_drivers, diagnose_stores, forecast_metric, get_performance_summary
-
 ROOT = Path(__file__).resolve().parents[1]
+SRC_PATH = ROOT / "src"
+if str(SRC_PATH) not in sys.path:
+    sys.path.insert(0, str(SRC_PATH))
+
+from repository import AnalyticsRepository
+from tools import analyze_revenue_drivers, diagnose_stores, forecast_metric, get_performance_summary
+
 DB_PATH = ROOT / "data" / "analytics.db"
 DASHBOARD_CACHE_VERSION = 2
 

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import sqlite3
+import sys
 import unittest
 from pathlib import Path
 
-from src.repository import AnalyticsRepository
-from src.semantic_model import METRICS
-from src.tools import analyze_revenue_drivers, diagnose_stores, forecast_metric, get_performance_summary, rank_performance
-
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from repository import AnalyticsRepository
+from semantic_model import METRICS
+from tools import analyze_revenue_drivers, diagnose_stores, forecast_metric, get_performance_summary, rank_performance
 
 
 class AnalyticsContractTests(unittest.TestCase):

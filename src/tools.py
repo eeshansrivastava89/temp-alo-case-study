@@ -8,8 +8,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .repository import AnalyticsRepository, Period
-from .semantic_model import CONTEXT_LABELS, SUMMARY_METRICS, get_metric
+from repository import AnalyticsRepository, Period
+from semantic_model import CONTEXT_LABELS, SUMMARY_METRICS, get_metric
 
 CONTEXT_NOTES = {
     "digital": "Digital commerce is the top-line source; unknown geography is retained in totals.",
