@@ -108,7 +108,7 @@ with left:
     ga_metrics = {item["metric"]: item for item in data["digital_drivers"]["supporting_ga_diagnostics"]}
     st.caption(
         f"Supporting GA diagnostics: sessions {ga_metrics['ga_sessions']['change']['percent']:+.1%}; "
-        f"GA Conversion Rate {ga_metrics['ga_conversion_rate']['change']['percent']:+.1%}. "
+        f"GA Conversion {ga_metrics['ga_conversion_rate']['change']['percent']:+.1%}. "
         "Traffic quality and tracking remain hypotheses to validate."
     )
 

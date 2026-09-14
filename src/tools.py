@@ -25,7 +25,7 @@ def _comparison(repo: AnalyticsRepository, period: Period, comparison: str) -> t
         prior = repo.previous_period(period)
         return prior, False, prior.label
     if comparison == "ly":
-        return period, True, "Supplied LY fields for the requested dates"
+        return period, True, "Provided LY comparator"
     raise ValueError("comparison must be 'previous_period' or 'ly'")
 
 
@@ -163,7 +163,7 @@ def _store_profile(current: dict[str, Any], baseline: dict[str, Any]) -> list[di
         ("store_units", "Store Units", "integer", current.get("units"), baseline.get("units")),
         (
             "store_conversion_rate",
-            "Store Conversion Rate",
+            "Store Conversion",
             "percent",
             ratio(current.get("orders"), current.get("traffic")),
             ratio(baseline.get("orders"), baseline.get("traffic")),

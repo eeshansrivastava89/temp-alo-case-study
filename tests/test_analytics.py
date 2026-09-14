@@ -81,7 +81,7 @@ class AnalyticsContractTests(unittest.TestCase):
         profile_labels = {metric["label"] for metric in result["results"][0]["profile"]}
         self.assertEqual(
             profile_labels,
-            {"Store Revenue", "Store Traffic", "Store Orders", "Store Units", "Store Conversion Rate", "Store AOV", "Store UPT"},
+            {"Store Revenue", "Store Traffic", "Store Orders", "Store Units", "Store Conversion", "Store AOV", "Store UPT"},
         )
 
     def test_forecast_is_positive_validated_and_contiguous_with_baseline(self) -> None:

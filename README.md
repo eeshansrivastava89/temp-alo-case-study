@@ -2,7 +2,7 @@
 
 A Streamlit prototype of an executive AI Business Analyst for Digital commerce, GA diagnostics, and Retail stores.
 
-The application uses governed metrics and deterministic analytical tools for every numerical claim. A configured OpenAI-compatible model selects those tools and links each executive finding to validated evidence, choosing a supported table, bar chart, or line chart. Responses use precise metric names, TY/LY or exact-date references, and native color coding for signed changes; there is no hidden analytical fallback.
+The application uses governed metrics and deterministic analytical tools for every numerical claim. A configured OpenAI-compatible model selects those tools and explains their results; there is no hidden rule-based response fallback. Answers use precise metric names, units, dates, and comparators alongside the decisive tool's compact exhibit, with methods and exact source files available in one collapsed section.
 
 ## Run locally
 
@@ -51,7 +51,7 @@ The LLM cannot execute SQL directly. Digital commerce owns top-line Digital metr
 - `src/semantic_model.py` — approved metrics and dimensions
 - `src/repository.py` — validated read-only queries
 - `src/tools.py` — summaries, drivers, rankings, store diagnosis, and forecast
-- `src/agent.py` — provider-independent tool routing and structured presentation contract
+- `src/agent.py` — OpenRouter tool routing
 - `scripts/build_database.py` — reproducible Excel-to-SQLite ingestion
 - `notebooks/01_data_audit_and_semantic_contract.ipynb` — executed audit, visuals, assumptions, and contract
 - `AGENTS.md` — plan and decision history
