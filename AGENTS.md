@@ -39,9 +39,9 @@ The prototype should help an executive understand performance, quantify business
 - Source ownership: Digital commerce for top-line Digital KPIs, Digital marketing for labeled GA diagnostics, Retail store for Retail KPIs, and Retail category blocked pending clarification
 - Do not calculate combined Digital + Retail revenue until currency and accounting definitions are confirmed
 - Period rules: source coverage is May 3–July 4, 2026 (63 dates spanning three calendar months); support the full available window against supplied LY, use Monday–Sunday complete weeks by default, compare partial weeks only with matched prior-week days, and use calendar months until a shared fiscal calendar is provided
-- Agent access: five validated tools (`get_performance_summary`, `analyze_revenue_drivers`, `rank_performance`, `diagnose_stores`, and `forecast_metric`) backed by a safe query builder; never arbitrary LLM-generated SQL
-- Response contract: preserve model freedom to choose tools, then require precise metric names, units, exact period references, ranking bases, and percentage-point distinctions within one conclusion-led headline, two or three findings, one action, and one material caveat in 160 words
-- Explainability: show the exact period, comparison, and sources above each response; render the final decisive tool result as the primary exhibit; escape currency symbols before Markdown rendering; and keep methods collapsed without raw chain-of-thought or tool JSON
+- Agent access: five validated analytical tools (`get_performance_summary`, `analyze_revenue_drivers`, `rank_performance`, `diagnose_stores`, and `forecast_metric`) plus a structured presentation submission backed by a safe query builder; never arbitrary LLM-generated SQL or Python
+- Response contract: preserve model freedom to choose all relevant tools, then require precise metric names, units, exact period references, ranking bases, and percentage-point distinctions within one conclusion-led headline, one to three evidence-linked findings, one action, and one material caveat in 180 words
+- Explainability: show exact periods, comparisons, and sources; let the model link each finding to validated evidence and choose a supported table, bar chart, or line chart; use TY/LY or exact-date field terminology instead of “current value”; escape currency symbols; and keep methods collapsed without raw chain-of-thought or tool JSON
 - Keep database access behind a repository interface so a production warehouse can replace SQLite
 - Primary deployment: Streamlit Community Cloud; Fly.io is the fallback
 - Keep the GitHub repository private unless the supplied data is confirmed safe to publish
@@ -137,11 +137,13 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 - **D-026 — Accepted:** Centralize provider, model, endpoint, and key configuration so switching any OpenAI-compatible tool-calling model requires only configuration changes, with no hidden defaults or fallbacks.
 - **D-027 — Accepted:** Configure the deployed app for direct DeepSeek V4.1 Flash access using the generic LLM settings without changing application code.
 - **D-028 — Accepted:** Give the model freedom to select analytical tools while enforcing a concise conclusion-led executive response contract.
-- **D-029 — Accepted:** Pair each answer with one compact table or chart and an always-visible scope line, then combine tool trace and evidence metadata in one collapsed method section without raw chain-of-thought or JSON.
+- **D-029 — Reversed:** Replace the single app-selected primary exhibit because it can diverge from a multi-metric model response even when every underlying result is valid.
 - **D-030 — Accepted:** Generate the source/schema page from SQLite and the metric registry, and render the existing notebook directly through Streamlit without curated duplicate content or generated files.
 - **D-031 — Accepted:** Escape currency symbols before Markdown rendering, require every figure to name its metric, unit, dates, and comparator, and drive the primary exhibit from the final decisive tool result so prose and evidence cannot diverge.
 - **D-032 — Accepted:** Describe the dataset as 63 daily dates from May 3 through July 4 spanning three calendar months, and support full-window analysis against supplied LY without implying three complete months or an unavailable prior 63-day window.
 - **D-033 — Accepted:** Define the seven-day forecast baseline as the immediately preceding seven observed dates, show baseline and forecast ranges together, and distinguish that rolling comparison from the dashboard's latest complete Monday–Sunday week.
+- **D-034 — Accepted:** Replace the fixed sidebar exhibit with a full-width structured response where the model links each finding to one validated evidence result and selects a supported table, bar chart, or line chart.
+- **D-035 — Accepted:** Use Streamlit's native green bold syntax for positive signed changes and red bold syntax for negative signed changes in findings while leaving unsigned levels and references neutral.
 
 ### New decision template
 
