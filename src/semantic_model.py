@@ -91,14 +91,14 @@ METRICS = {
     "ga_orders": additive("ga_orders", "GA Orders", "ga", "ga_orders_ty", "ga_orders_ly", "integer"),
     "ga_units": additive("ga_units", "GA Units", "ga", "ga_units_ty", "ga_units_ly", "integer"),
     "ga_customers_acquired": additive("ga_customers_acquired", "GA Customers Acquired", "ga", "ga_customers_acquired_ty", "ga_customers_acquired_ly", "integer"),
-    "ga_conversion_rate": ratio("ga_conversion_rate", "GA Conversion", "ga", "ga_orders_ty", "ga_sessions_ty", "ga_orders_ly", "ga_sessions_ly", "percent"),
+    "ga_conversion_rate": ratio("ga_conversion_rate", "GA Conversion Rate", "ga", "ga_orders_ty", "ga_sessions_ty", "ga_orders_ly", "ga_sessions_ly", "percent"),
     "ga_aov": ratio("ga_aov", "GA AOV", "ga", "ga_revenue_ty", "ga_orders_ty", "ga_revenue_ly", "ga_orders_ly", "currency"),
     # Canonical Retail store metrics.
     "store_revenue": additive("store_revenue", "Store Revenue", "store", "store_revenue_ty", "store_revenue_ly", "currency", "Source field is Retail net sales."),
     "store_traffic": additive("store_traffic", "Store Traffic", "store", "store_traffic_ty", "store_traffic_ly", "integer"),
     "store_orders": additive("store_orders", "Store Orders", "store", "store_orders_ty", "store_orders_ly", "integer"),
     "store_units": additive("store_units", "Store Units", "store", "store_units_ty", "store_units_ly", "integer"),
-    "store_conversion_rate": ratio("store_conversion_rate", "Store Conversion", "store", "store_orders_ty", "store_traffic_ty", "store_orders_ly", "store_traffic_ly", "percent"),
+    "store_conversion_rate": ratio("store_conversion_rate", "Store Conversion Rate", "store", "store_orders_ty", "store_traffic_ty", "store_orders_ly", "store_traffic_ly", "percent"),
     "store_aov": ratio("store_aov", "Store AOV", "store", "store_revenue_ty", "store_orders_ty", "store_revenue_ly", "store_orders_ly", "currency"),
     "store_upt": ratio("store_upt", "Store UPT", "store", "store_units_ty", "store_orders_ty", "store_units_ly", "store_orders_ly", "decimal"),
 }

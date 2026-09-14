@@ -14,7 +14,7 @@ from src.semantic_model import CONTEXT_VIEWS
 
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "analytics.db"
-MESSAGE_SCHEMA_VERSION = 2
+MESSAGE_SCHEMA_VERSION = 3
 
 TOOL_LABELS = {
     "get_performance_summary": "Performance summary",
@@ -52,6 +52,28 @@ def configured_llm():
 def markdown_text(value: str) -> str:
     """Prevent currency amounts from being parsed as inline LaTeX by Streamlit."""
     return re.sub(r"(?<!\\)\$(?=\s?\d)", r"\\$", value)
+
+
+def color_signed_changes(value: str) -> str:
+    """Apply native Streamlit colors to signed changes while preserving model-applied colors."""
+    protected: list[str] = []
+
+    def protect(match: re.Match) -> str:
+        protected.append(match.group(0))
+        return f"@@COLOR{len(protected) - 1}@@"
+
+    value = re.sub(r":(?:green|red)\[\*\*.*?\*\*\]", protect, value)
+    pattern = r"(?<![\w])([+−-]\s?\$?\d[\d,]*(?:\.\d+)?\s?(?:[KMB]|%|pp)?)(?![\w-])"
+
+    def color(match: re.Match) -> str:
+        change = match.group(1)
+        color_name = "green" if change.lstrip().startswith("+") else "red"
+        return f":{color_name}[**{change}**]"
+
+    value = re.sub(pattern, color, value, flags=re.IGNORECASE)
+    for index, colored in enumerate(protected):
+        value = value.replace(f"@@COLOR{index}@@", colored)
+    return value
 
 
 def money(value: float | None) -> str:
@@ -143,41 +165,53 @@ def scope_line(evidence: list[dict]) -> str:
     return "  |  ".join(pieces)
 
 
-def render_summary_exhibit(results: list[dict]) -> None:
-    rows = []
-    for result in results:
-        for metric in result.get("metrics", []):
-            rows.append(
-                {
-                    "KPI": metric["label"],
-                    "Current": metric_value(metric),
-                    "Change": percent(metric["change"]["percent"]),
-                }
-            )
-    if rows:
-        st.dataframe(pd.DataFrame(rows[:8]), hide_index=True, width="stretch", height=min(315, 38 + 35 * min(len(rows), 8)))
+def comparison_headers(result: dict, metric_label: str | None = None) -> tuple[str, str, str]:
+    comparison = result.get("comparison", {})
+    period = result.get("period", {})
+    if comparison.get("type") == "ly":
+        prefix = f"{metric_label} " if metric_label else ""
+        return f"{prefix}TY", f"{prefix}LY", "TY vs LY"
+    prefix = f"{metric_label} · " if metric_label else ""
+    return (
+        f"{prefix}{period.get('start')} to {period.get('end')}",
+        f"{prefix}{comparison.get('label')}",
+        "Period change",
+    )
 
 
-def render_driver_exhibit(results: list[dict]) -> None:
+def formatted_change(metric: dict) -> str:
+    if metric.get("format") == "percent":
+        movement = metric.get("change", {}).get("absolute")
+        return "n/a" if movement is None else f"{movement * 100:+.2f} pp".replace("-", "−")
+    return percent(metric.get("change", {}).get("percent"))
+
+
+def render_summary_exhibit(result: dict) -> None:
+    ty_header, baseline_header, change_header = comparison_headers(result)
     rows = []
-    for result in results[:2]:
-        context = "Digital" if result.get("context") == "digital" else "Stores"
-        for factor in result.get("factors", []):
-            rows.append(
-                {
-                    "Driver": f"{context} · {factor['factor']}",
-                    "Revenue contribution": factor["revenue_contribution"],
-                }
-            )
-    if rows:
-        chart = pd.DataFrame(rows).set_index("Driver")
-        st.bar_chart(chart, horizontal=True)
-        st.dataframe(
-            pd.DataFrame({"Driver": chart.index, "Contribution": [money(value) for value in chart["Revenue contribution"]]}),
-            hide_index=True,
-            width="stretch",
-            height=min(250, 38 + 35 * len(rows)),
+    for metric in result.get("metrics", []):
+        rows.append(
+            {
+                "KPI": metric["label"],
+                ty_header: metric_value(metric),
+                baseline_header: metric_value({**metric, "value": metric.get("baseline")}),
+                change_header: formatted_change(metric),
+            }
         )
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch", height=min(315, 38 + 35 * len(rows)))
+
+
+def render_driver_exhibit(result: dict, visual: str) -> None:
+    metric_label = "Digital Revenue" if result.get("context") == "digital" else "Store Revenue"
+    value_header = f"{metric_label} contribution"
+    rows = [{"Driver": item["factor"], value_header: item["revenue_contribution"]} for item in result.get("factors", [])]
+    frame = pd.DataFrame(rows)
+    if visual == "bar":
+        st.bar_chart(frame, x="Driver", y=value_header, horizontal=True, sort=False)
+    else:
+        display = frame.copy()
+        display[value_header] = display[value_header].map(money)
+        st.dataframe(display, hide_index=True, width="stretch")
 
 
 def render_store_profile_exhibit(result: dict) -> bool:
@@ -186,154 +220,149 @@ def render_store_profile_exhibit(result: dict) -> bool:
     leader = result["results"][0]
     if not leader.get("profile"):
         return False
-    rows = []
-    for metric in leader["profile"]:
-        if metric["format"] == "percent":
-            movement = metric["change"]["absolute"]
-            change = "n/a" if movement is None else f"{movement * 100:+.1f} pp".replace("-", "−")
-        else:
-            change = percent(metric["change"]["percent"])
-        baseline_metric = {**metric, "value": metric["baseline"]}
-        rows.append(
-            {
-                "KPI": metric["label"],
-                "Current": metric_value(metric),
-                "Comparator": metric_value(baseline_metric),
-                "Change": change,
-            }
-        )
+    ty_header, baseline_header, change_header = comparison_headers(result)
+    rows = [
+        {
+            "KPI": metric["label"],
+            ty_header: metric_value(metric),
+            baseline_header: metric_value({**metric, "value": metric.get("baseline")}),
+            change_header: formatted_change(metric),
+        }
+        for metric in leader["profile"]
+    ]
     st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch", height=283)
     st.caption(
-        f"Store {leader['dimension_value']} ranks first among {result.get('entities_evaluated', 'all')} stores by current Store Revenue."
+        f"Store {leader['dimension_value']} ranks first among {result.get('entities_evaluated', 'all')} stores by Store Revenue TY for the requested dates."
     )
     return True
 
 
-def render_rank_exhibit(result: dict) -> None:
-    if render_store_profile_exhibit(result):
+def rank_value(metric_format: str, value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    if metric_format == "currency":
+        return money(value)
+    if metric_format == "percent":
+        return f"{value:.2%}"
+    return f"{value:,.0f}"
+
+
+def render_rank_exhibit(result: dict, visual: str) -> None:
+    if visual == "table" and render_store_profile_exhibit(result):
         return
-    ranking_basis = result.get("ranking_basis", "change")
-    value_column = "Current value" if ranking_basis == "value" else "Change"
+    metric_label = result["metric_label"]
+    dimension_header = result.get("dimension", "Dimension").title()
+    ty_header, baseline_header, change_header = comparison_headers(result, metric_label)
+    items = result.get("results", [])[:8]
     rows = [
         {
-            result.get("dimension", "Dimension").title(): item["dimension_value"],
-            value_column: item["value"] if ranking_basis == "value" else item["change"]["absolute"],
-            "Change %": percent(item["change"]["percent"]),
+            dimension_header: item["dimension_value"],
+            ty_header: item["value"],
+            baseline_header: item["baseline"],
+            change_header: item["change"]["percent"],
         }
-        for item in result.get("results", [])[:5]
+        for item in items
     ]
-    if rows:
-        frame = pd.DataFrame(rows)
-        st.bar_chart(frame.set_index(frame.columns[0])[[value_column]], horizontal=True)
-        display = frame.copy()
-        if result.get("metric_format") == "currency":
-            display[value_column] = display[value_column].map(money)
-        elif result.get("metric_format") == "percent":
-            display[value_column] = display[value_column].map(lambda value: f"{value:.1%}")
+    frame = pd.DataFrame(rows)
+    if visual == "bar":
+        if result.get("ranking_basis") == "change":
+            change_value_header = f"{metric_label} absolute change"
+            chart = pd.DataFrame(
+                {
+                    dimension_header: [item["dimension_value"] for item in items],
+                    change_value_header: [item["change"]["absolute"] for item in items],
+                }
+            )
+            st.bar_chart(chart, x=dimension_header, y=change_value_header, horizontal=True, sort=False)
         else:
-            display[value_column] = display[value_column].map(lambda value: f"{value:,.0f}")
-        st.dataframe(display, hide_index=True, width="stretch", height=215)
-        if len(result.get("results", [])) > 5:
-            st.caption(f"Showing 5 of {len(result['results'])} returned {result.get('dimension', 'items')} records.")
+            chart = frame[[dimension_header, ty_header, baseline_header]].copy()
+            if result.get("metric_format") == "percent":
+                chart[ty_header] *= 100
+                chart[baseline_header] *= 100
+                chart = chart.rename(columns={ty_header: f"{ty_header} (%)", baseline_header: f"{baseline_header} (%)"})
+                ty_header, baseline_header = f"{ty_header} (%)", f"{baseline_header} (%)"
+            st.bar_chart(chart, x=dimension_header, y=[ty_header, baseline_header], horizontal=True, sort=False)
+    else:
+        display = frame.copy()
+        display[ty_header] = display[ty_header].map(lambda value: rank_value(result.get("metric_format", "integer"), value))
+        display[baseline_header] = display[baseline_header].map(lambda value: rank_value(result.get("metric_format", "integer"), value))
+        display[change_header] = display[change_header].map(percent)
+        st.dataframe(display, hide_index=True, width="stretch", height=min(320, 38 + 35 * len(display)))
+    if len(result.get("results", [])) > len(items):
+        st.caption(f"Showing {len(items)} of {len(result['results'])} returned {result.get('dimension', 'dimension')} records.")
 
 
-def render_store_exhibit(result: dict) -> None:
+def render_store_exhibit(result: dict, visual: str) -> None:
     rows = [
         {
             "Store": str(item["store_id"]),
-            "Revenue change": item["revenue_change"]["absolute"],
-            "Change %": percent(item["revenue_change"]["percent"]),
-            "Driver": item["primary_driver"],
+            "Store Revenue change": item["revenue_change"]["absolute"],
+            "Store Revenue change %": item["revenue_change"]["percent"],
+            "Primary driver": item["primary_driver"],
         }
-        for item in result.get("stores", [])[:5]
+        for item in result.get("stores", [])[:8]
     ]
-    if rows:
-        frame = pd.DataFrame(rows)
-        st.bar_chart(frame.set_index("Store")[["Revenue change"]], horizontal=True)
+    frame = pd.DataFrame(rows)
+    if visual == "bar":
+        st.bar_chart(frame, x="Store", y="Store Revenue change", horizontal=True, sort=False)
+    else:
         display = frame.copy()
-        display["Revenue change"] = display["Revenue change"].map(money)
-        st.dataframe(display, hide_index=True, width="stretch", height=215)
-        if len(result.get("stores", [])) > 5:
-            st.caption(f"Showing 5 of {len(result['stores'])} stores returned by the diagnosis.")
+        display["Store Revenue change"] = display["Store Revenue change"].map(money)
+        display["Store Revenue change %"] = display["Store Revenue change %"].map(percent)
+        st.dataframe(display, hide_index=True, width="stretch", height=min(320, 38 + 35 * len(display)))
 
 
-def render_forecast_exhibit(results: list[dict]) -> None:
-    series = []
-    for result in results[:2]:
-        for point in result.get("daily_forecast", []):
-            series.append({"Date": point["date"], "Metric": result["metric_label"], "Forecast": point["value"]})
-    if series:
-        chart = pd.DataFrame(series).pivot(index="Date", columns="Metric", values="Forecast")
-        st.line_chart(chart)
-        totals = []
-        for result in results[:2]:
-            forecast = result["forecast_period"]
-            baseline = forecast_baseline_period(result)
-            totals.extend(
-                [
-                    {
-                        "Measure": f"Observed baseline · {baseline['start']} to {baseline['end']}",
-                        result["metric_label"]: money(result["recent_baseline_total"]),
-                        "Change": "—",
-                    },
-                    {
-                        "Measure": f"Forecast · {forecast['start']} to {forecast['end']}",
-                        result["metric_label"]: money(result["forecast_total"]),
-                        "Change": percent(result["change_vs_recent"]["percent"]),
-                    },
-                ]
-            )
-        st.dataframe(pd.DataFrame(totals), hide_index=True, width="stretch", height=145)
-
-
-def render_primary_exhibit(evidence: list[dict]) -> None:
-    supported_tools = {
-        "diagnose_stores",
-        "rank_performance",
-        "analyze_revenue_drivers",
-        "forecast_metric",
-        "get_performance_summary",
-    }
-    primary = next(
-        (result for result in reversed(evidence) if result.get("tool") in supported_tools and not result.get("error")),
-        None,
-    )
-    if primary is None:
-        st.caption("No quantitative exhibit was required for this response.")
-        return
-
-    tool = primary["tool"]
-    if tool == "diagnose_stores":
-        title = "STORES WITH LARGEST STORE REVENUE DECLINES"
-    elif tool == "rank_performance":
-        if (
-            primary.get("dimension") == "store"
-            and primary.get("direction") == "top"
-            and primary.get("ranking_basis") == "value"
-            and primary.get("results")
-        ):
-            title = f"STORE REVENUE LEADER: STORE {primary['results'][0]['dimension_value']}"
-        else:
-            basis = "CURRENT VALUE" if primary.get("ranking_basis") == "value" else "CHANGE"
-            title = f"{primary.get('metric_label', 'METRIC').upper()} RANKED BY {basis}"
-    elif tool == "analyze_revenue_drivers":
-        title = "REVENUE-CHANGE DRIVERS"
-    elif tool == "forecast_metric":
-        title = f"{primary.get('metric_label', 'METRIC').upper()} FORECAST"
+def render_forecast_exhibit(result: dict, visual: str) -> None:
+    forecast = result["forecast_period"]
+    baseline = forecast_baseline_period(result)
+    if visual == "line":
+        series = pd.DataFrame(result.get("daily_forecast", [])).rename(columns={"date": "Date", "value": result["metric_label"]})
+        st.line_chart(series, x="Date", y=result["metric_label"])
     else:
-        title = f"{primary.get('context_label', 'PERFORMANCE').upper()} SUMMARY"
-    st.caption(title)
+        rows = [
+            {
+                "Measure": f"Observed · {baseline['start']} to {baseline['end']}",
+                result["metric_label"]: money(result["recent_baseline_total"]),
+                "Forecast vs observed": "—",
+            },
+            {
+                "Measure": f"Forecast · {forecast['start']} to {forecast['end']}",
+                result["metric_label"]: money(result["forecast_total"]),
+                "Forecast vs observed": percent(result["change_vs_recent"]["percent"]),
+            },
+        ]
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch", height=145)
 
+
+def exhibit_title(result: dict) -> str:
+    tool = result.get("tool")
+    if tool == "rank_performance":
+        ty_header, baseline_header, _ = comparison_headers(result, result["metric_label"])
+        return f"{ty_header} vs {baseline_header} by {result['dimension'].title()}"
+    if tool == "analyze_revenue_drivers":
+        metric = "Digital Revenue" if result.get("context") == "digital" else "Store Revenue"
+        return f"{metric} change decomposition"
     if tool == "diagnose_stores":
-        render_store_exhibit(primary)
-    elif tool == "rank_performance":
-        render_rank_exhibit(primary)
+        return "Store Revenue declines by Store"
+    if tool == "forecast_metric":
+        return f"{result['metric_label']} observed baseline and forecast"
+    ty_header, baseline_header, _ = comparison_headers(result)
+    return f"{result.get('context_label', 'KPI')} KPIs · {ty_header} vs {baseline_header}"
+
+
+def render_evidence(result: dict, visual: str) -> None:
+    st.caption(exhibit_title(result).upper())
+    tool = result.get("tool")
+    if tool == "get_performance_summary":
+        render_summary_exhibit(result)
     elif tool == "analyze_revenue_drivers":
-        render_driver_exhibit([primary])
+        render_driver_exhibit(result, visual)
+    elif tool == "rank_performance":
+        render_rank_exhibit(result, visual)
+    elif tool == "diagnose_stores":
+        render_store_exhibit(result, visual)
     elif tool == "forecast_metric":
-        render_forecast_exhibit([primary])
-    else:
-        render_summary_exhibit([primary])
+        render_forecast_exhibit(result, visual)
 
 
 def render_method(message: dict) -> None:
@@ -365,14 +394,24 @@ def render_method(message: dict) -> None:
 
 def render_assistant_message(message: dict) -> None:
     evidence = message.get("evidence", [])
+    presentation = message.get("presentation")
     scope = scope_line(evidence)
     if scope:
         st.caption(scope)
-    answer, exhibit = st.columns([3, 2])
-    with answer:
+    if not presentation:
         st.markdown(markdown_text(message["content"]))
-    with exhibit:
-        render_primary_exhibit(evidence)
+        render_method(message)
+        return
+
+    st.markdown(f"**{markdown_text(presentation['headline'])}**")
+    for finding in presentation["findings"]:
+        statement = markdown_text(color_signed_changes(finding["statement"]))
+        st.markdown(f"- {statement}")
+        exhibit = finding["exhibit"]
+        render_evidence(evidence[exhibit["evidence_index"]], exhibit["visual"])
+    st.markdown(f"**Action:** {markdown_text(presentation['action'])}")
+    if presentation.get("watch"):
+        st.markdown(f"**Watch:** {markdown_text(presentation['watch'])}")
     render_method(message)
 
 
@@ -446,6 +485,7 @@ if prompt:
             assistant_message = {
                 "role": "assistant",
                 "content": response.text,
+                "presentation": response.presentation,
                 "evidence": response.evidence,
                 "steps": response.steps,
                 "model": response.model,
