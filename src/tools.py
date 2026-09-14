@@ -370,6 +370,7 @@ def forecast_metric(
         "tool": "forecast_metric",
         "metric": metric,
         "metric_label": definition.label,
+        "metric_format": definition.format,
         "forecast_period": {"start": future_dates.iloc[0].date().isoformat(), "end": future_dates.iloc[-1].date().isoformat()},
         "forecast_total": forecast_total,
         "baseline_period": {

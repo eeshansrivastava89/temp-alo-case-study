@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import sys
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -81,6 +82,10 @@ def color_signed_changes(value: str) -> str:
     return value
 
 
+def chart_number_format(metric_format: str) -> str:
+    return {"currency": "$,.0f", "percent": ".1%", "decimal": ",.2f"}.get(metric_format, ",.0f")
+
+
 def money(value: float | None) -> str:
     if value is None:
         return "n/a"
@@ -88,7 +93,7 @@ def money(value: float | None) -> str:
     magnitude = abs(value)
     if magnitude >= 1_000_000:
         return f"{sign}${magnitude / 1_000_000:.2f}M"
-    if magnitude >= 1_000:
+    if magnitude >= 10_000:
         return f"{sign}${magnitude / 1_000:.0f}K"
     return f"{sign}${magnitude:,.0f}"
 
@@ -212,7 +217,18 @@ def render_driver_exhibit(result: dict, visual: str) -> None:
     rows = [{"Driver": item["factor"], value_header: item["revenue_contribution"]} for item in result.get("factors", [])]
     frame = pd.DataFrame(rows)
     if visual == "bar":
-        st.bar_chart(frame, x="Driver", y=value_header, horizontal=True, sort=False)
+        chart = (
+            alt.Chart(frame)
+            .mark_bar()
+            .encode(
+                y=alt.Y("Driver:N", sort=None, title=None),
+                x=alt.X(f"{value_header}:Q", axis=alt.Axis(format="$,.0f"), title=value_header),
+                color=alt.condition(alt.datum[value_header] >= 0, alt.value("#1E8E5A"), alt.value("#C74646")),
+                tooltip=[alt.Tooltip("Driver:N"), alt.Tooltip(f"{value_header}:Q", format="$,.0f")],
+            )
+            .properties(height=max(150, 34 * len(frame)))
+        )
+        st.altair_chart(chart, width="stretch")
     else:
         display = frame.copy()
         display[value_header] = display[value_header].map(money)
@@ -270,23 +286,51 @@ def render_rank_exhibit(result: dict, visual: str) -> None:
     ]
     frame = pd.DataFrame(rows)
     if visual == "bar":
+        metric_format = result.get("metric_format", "integer")
+        number_format = chart_number_format(metric_format)
         if result.get("ranking_basis") == "change":
             change_value_header = f"{metric_label} absolute change"
-            chart = pd.DataFrame(
+            chart_data = pd.DataFrame(
                 {
                     dimension_header: [item["dimension_value"] for item in items],
                     change_value_header: [item["change"]["absolute"] for item in items],
                 }
             )
-            st.bar_chart(chart, x=dimension_header, y=change_value_header, horizontal=True, sort=False)
+            chart = (
+                alt.Chart(chart_data)
+                .mark_bar()
+                .encode(
+                    y=alt.Y(f"{dimension_header}:N", sort=None, title=None),
+                    x=alt.X(f"{change_value_header}:Q", axis=alt.Axis(format=number_format), title=change_value_header),
+                    color=alt.condition(alt.datum[change_value_header] >= 0, alt.value("#1E8E5A"), alt.value("#C74646")),
+                    tooltip=[
+                        alt.Tooltip(f"{dimension_header}:N"),
+                        alt.Tooltip(f"{change_value_header}:Q", format=number_format),
+                    ],
+                )
+                .properties(height=max(180, 32 * len(chart_data)))
+            )
         else:
-            chart = frame[[dimension_header, ty_header, baseline_header]].copy()
-            if result.get("metric_format") == "percent":
-                chart[ty_header] *= 100
-                chart[baseline_header] *= 100
-                chart = chart.rename(columns={ty_header: f"{ty_header} (%)", baseline_header: f"{baseline_header} (%)"})
-                ty_header, baseline_header = f"{ty_header} (%)", f"{baseline_header} (%)"
-            st.bar_chart(chart, x=dimension_header, y=[ty_header, baseline_header], horizontal=True, sort=False)
+            chart_data = frame[[dimension_header, ty_header, baseline_header]].melt(
+                id_vars=dimension_header, var_name="Series", value_name=metric_label
+            )
+            chart = (
+                alt.Chart(chart_data)
+                .mark_bar()
+                .encode(
+                    y=alt.Y(f"{dimension_header}:N", sort=None, title=None),
+                    yOffset=alt.YOffset("Series:N"),
+                    x=alt.X(f"{metric_label}:Q", axis=alt.Axis(format=number_format), title=metric_label),
+                    color=alt.Color("Series:N", legend=alt.Legend(title=None)),
+                    tooltip=[
+                        alt.Tooltip(f"{dimension_header}:N"),
+                        alt.Tooltip("Series:N"),
+                        alt.Tooltip(f"{metric_label}:Q", format=number_format),
+                    ],
+                )
+                .properties(height=max(200, 42 * len(items)))
+            )
+        st.altair_chart(chart, width="stretch")
     else:
         display = frame.copy()
         display[ty_header] = display[ty_header].map(lambda value: rank_value(result.get("metric_format", "integer"), value))
@@ -309,7 +353,23 @@ def render_store_exhibit(result: dict, visual: str) -> None:
     ]
     frame = pd.DataFrame(rows)
     if visual == "bar":
-        st.bar_chart(frame, x="Store", y="Store Revenue change", horizontal=True, sort=False)
+        chart = (
+            alt.Chart(frame)
+            .mark_bar()
+            .encode(
+                y=alt.Y("Store:N", sort=None, title=None),
+                x=alt.X("Store Revenue change:Q", axis=alt.Axis(format="$,.0f"), title="Store Revenue change"),
+                color=alt.condition(alt.datum["Store Revenue change"] >= 0, alt.value("#1E8E5A"), alt.value("#C74646")),
+                tooltip=[
+                    alt.Tooltip("Store:N"),
+                    alt.Tooltip("Store Revenue change:Q", format="$,.0f"),
+                    alt.Tooltip("Store Revenue change %:Q", format=".1%"),
+                    alt.Tooltip("Primary driver:N"),
+                ],
+            )
+            .properties(height=max(180, 32 * len(frame)))
+        )
+        st.altair_chart(chart, width="stretch")
     else:
         display = frame.copy()
         display["Store Revenue change"] = display["Store Revenue change"].map(money)
@@ -321,8 +381,20 @@ def render_forecast_exhibit(result: dict, visual: str) -> None:
     forecast = result["forecast_period"]
     baseline = forecast_baseline_period(result)
     if visual == "line":
-        series = pd.DataFrame(result.get("daily_forecast", [])).rename(columns={"date": "Date", "value": result["metric_label"]})
-        st.line_chart(series, x="Date", y=result["metric_label"])
+        metric_label = result["metric_label"]
+        number_format = chart_number_format(result.get("metric_format", "currency"))
+        series = pd.DataFrame(result.get("daily_forecast", [])).rename(columns={"date": "Date", "value": metric_label})
+        chart = (
+            alt.Chart(series)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X("Date:T", title="Forecast date"),
+                y=alt.Y(f"{metric_label}:Q", axis=alt.Axis(format=number_format), title=metric_label),
+                tooltip=[alt.Tooltip("Date:T", format="%b %d, %Y"), alt.Tooltip(f"{metric_label}:Q", format=number_format)],
+            )
+            .properties(height=280)
+        )
+        st.altair_chart(chart, width="stretch")
     else:
         rows = [
             {

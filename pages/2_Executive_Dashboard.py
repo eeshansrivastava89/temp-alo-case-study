@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from pathlib import Path
 import sys
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -47,8 +48,8 @@ def money(value: float | None) -> str:
     magnitude = abs(value)
     if magnitude >= 1_000_000:
         return f"{sign}${magnitude / 1_000_000:.2f}M"
-    if magnitude >= 1_000:
-        return f"{sign}${magnitude / 1_000:.1f}K"
+    if magnitude >= 10_000:
+        return f"{sign}${magnitude / 1_000:.0f}K"
     return f"{sign}${magnitude:,.0f}"
 
 
@@ -83,10 +84,21 @@ def render_metrics(summary: dict) -> None:
         column.metric(metric["label"], display_value(metric), display_delta(metric))
 
 
-def driver_frame(result: dict) -> pd.DataFrame:
-    return pd.DataFrame(
+def driver_chart(result: dict) -> alt.Chart:
+    frame = pd.DataFrame(
         [{"Driver": item["factor"], "Revenue contribution": item["revenue_contribution"]} for item in result["factors"]]
-    ).set_index("Driver")
+    )
+    return (
+        alt.Chart(frame)
+        .mark_bar()
+        .encode(
+            y=alt.Y("Driver:N", sort=None, title=None),
+            x=alt.X("Revenue contribution:Q", axis=alt.Axis(format="$,.0f"), title="Revenue contribution"),
+            color=alt.condition(alt.datum["Revenue contribution"] >= 0, alt.value("#1E8E5A"), alt.value("#C74646")),
+            tooltip=[alt.Tooltip("Driver:N"), alt.Tooltip("Revenue contribution:Q", format="$,.0f")],
+        )
+        .properties(height=190)
+    )
 
 
 data = dashboard_data(DASHBOARD_CACHE_VERSION)
@@ -109,7 +121,7 @@ with left:
     st.subheader("Digital revenue drivers")
     digital_change = data["digital_drivers"]["revenue"]["change"]
     st.metric("Revenue change", money(digital_change["absolute"]), f"{digital_change['percent']:+.1%}")
-    st.bar_chart(driver_frame(data["digital_drivers"]), horizontal=True)
+    st.altair_chart(driver_chart(data["digital_drivers"]), width="stretch")
     ga_metrics = {item["metric"]: item for item in data["digital_drivers"]["supporting_ga_diagnostics"]}
     st.caption(
         f"Supporting GA diagnostics: sessions {ga_metrics['ga_sessions']['change']['percent']:+.1%}; "
@@ -121,7 +133,7 @@ with right:
     st.subheader("Store revenue drivers")
     store_change = data["store_drivers"]["revenue"]["change"]
     st.metric("Revenue change", money(store_change["absolute"]), f"{store_change['percent']:+.1%}")
-    st.bar_chart(driver_frame(data["store_drivers"]), horizontal=True)
+    st.altair_chart(driver_chart(data["store_drivers"]), width="stretch")
     st.caption("Shapley contributions reconcile to the revenue change. Conversion was the main pressure in this period.")
 
 st.divider()
