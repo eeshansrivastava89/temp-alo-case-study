@@ -89,8 +89,8 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 
 ### Presentation checklist — reserve at least 1 hour
 
-- [ ] **TODO:** Build no more than five slides covering the problem, experience, architecture, analytical result, recommendations, limitations, and next steps.
-- [ ] **TODO:** Reuse the decision log to explain the implementation approach and tradeoffs.
+- [x] **DONE:** Built a five-slide editable PowerPoint covering the problem, experience, architecture, analytical result, recommendations, limitations, and next steps.
+- [x] **DONE:** Reused the decision log to explain the implementation approach and tradeoffs.
 - [ ] **TODO:** Rehearse the deployed demo and prepare a fallback path.
 
 ### Scope guardrail
@@ -142,6 +142,7 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 - **D-031 — Accepted:** Escape currency symbols before Markdown rendering, require every figure to name its metric, unit, dates, and comparator, and drive the primary exhibit from the final decisive tool result so prose and evidence cannot diverge.
 - **D-032 — Accepted:** Describe the dataset as 63 daily dates from May 3 through July 4 spanning three calendar months, and support full-window analysis against supplied LY without implying three complete months or an unavailable prior 63-day window.
 - **D-033 — Accepted:** Define the seven-day forecast baseline as the immediately preceding seven observed dates, show baseline and forecast ranges together, and distinguish that rolling comparison from the dashboard's latest complete Monday–Sunday week.
+- **D-034 — Accepted:** Use an original five-slide consulting-style deck with action titles, restrained color, direct labels, source notes, speaker notes, and links to the app, repository, and demo-video fallback.
 
 ### New decision template
 
