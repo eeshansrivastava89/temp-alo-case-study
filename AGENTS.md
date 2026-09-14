@@ -27,10 +27,11 @@ The prototype should help an executive understand performance, quantify business
 - Keep documentation concise enough to reuse in the final deck.
 - Keep exploratory research, validation evidence, visuals, and semantic-contract conclusions in one executed notebook.
 - Do not make the application import or execute the notebook; move approved ETL and runtime logic into scripts and modules.
+- Prefer DRY and KISS: keep each rule or configuration in one obvious place, avoid provider-specific branches, and do not add hidden fallbacks or hardcoded runtime choices.
 
 ### Technical and analytical guardrails
 
-- Application: Streamlit and Python
+- Application: native Streamlit components with no custom CSS or typography; page 1 is the AI Business Analyst and page 2 is the Executive Dashboard
 - Data layer: read-only SQLite with four cleaned fact tables (`fact_digital_commerce`, `fact_digital_marketing`, `fact_retail_store`, and restricted `fact_retail_category`), a shared `dim_date`, and SQL metric views
 - Preserve source file and source-row metadata in fact tables, keep TY and paired LY measures in separate columns, and use the original workbooks plus ingestion script as the raw record instead of duplicating raw tables in SQLite
 - Semantic layer: Python registry for governed metrics, dimensions, filters, formats, and valid grains
@@ -45,7 +46,7 @@ The prototype should help an executive understand performance, quantify business
 - Store secrets in local environment variables or Streamlit Secrets; never commit API keys
 - Preprocess the database rather than parsing every workbook on each application cold start
 - Do not write conversational or application state to the deployed SQLite database
-- Keep the dashboard and deterministic analysis usable when the LLM is unavailable
+- Configure the OpenAI-compatible LLM provider, model, base URL, and API key through one explicit runtime configuration; the dashboard remains available without a valid configuration, but the analyst has no deterministic response fallback
 - Validate every displayed figure against deterministic calculations
 - Preserve legitimate zeros and negative Retail values, label zero-LY cases without calculating infinite growth, remove only confirmed all-zero store placeholders, and display missing dimensions as `Unknown`
 - Calculate AOV, conversion, and UPT as ratios of aggregated totals and return no percentage when the denominator is zero
@@ -71,10 +72,10 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 - [x] **DONE — 20 min:** Built and validated the one-time Excel-to-SQLite ingestion script with four clean fact tables, a shared date dimension, metric views, lineage fields, and enforced reporting restrictions.
 - [x] **DONE — 15 min:** Implemented the Python metric registry, read-only repository, and validated query builder.
 - [x] **DONE — 30 min:** Implemented deterministic tools for KPI summaries, period comparisons, revenue drivers, store ranking, and seasonal forecasting.
-- [x] **DONE — 30 min:** Built the Streamlit executive brief, charts, evidence display, suggested prompts, and failure states.
-- [x] **DONE — 25 min:** Added optional OpenAI tool routing, grounded explanations, recommendations, follow-up context, and a no-key deterministic fallback.
+- [x] **DONE — 30 min:** Built a minimal native Streamlit experience with the AI Business Analyst on page 1 and Executive Dashboard on page 2.
+- [x] **DONE — 25 min:** Added OpenRouter/Nemotron tool routing, grounded explanations, recommendations, and follow-up context without a hidden response fallback.
 - [x] **DONE — 10 min:** Validated metric contracts, read-only access, driver reconciliation, forecasts, invalid-query blocking, Streamlit rendering, and the primary analyst interaction.
-- [ ] **IN PROGRESS — 5 min:** Push to a private GitHub repository and deploy to Streamlit Community Cloud; use Fly.io only if blocked.
+- [ ] **BLOCKED — 5 min:** Code is pushed to the private `temp-alo-case-study` GitHub repository; Streamlit Community Cloud deployment awaits browser authorization and app creation.
 
 ### Demo acceptance checklist
 
@@ -82,7 +83,7 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 - [x] **DONE:** Answer **“Why did revenue change last week?”** with quantified drivers and evidence.
 - [x] **DONE:** Answer **“Which stores need attention, and what should we do?”** with rankings, actions, and limitations.
 - [x] **DONE:** Display the period, source, assumptions, and supporting chart or table for each analytical answer.
-- [x] **DONE:** Keep the dashboard and deterministic analysis usable when the LLM is unavailable.
+- [x] **DONE:** Keep the dashboard available without an API key while clearly disabling the AI analyst rather than substituting hidden responses.
 
 ### Presentation checklist — reserve at least 1 hour
 
@@ -110,7 +111,7 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 - **D-002 — Accepted:** Use deterministic Python and governed SQL for every calculation while the LLM selects tools and explains verified results.
 - **D-003 — Accepted:** Use Streamlit and Python to protect the three-hour build budget rather than spending time on a custom frontend and API.
 - **D-004 — Accepted:** Deploy from a private GitHub repository to Streamlit Community Cloud, with Fly.io as the fallback.
-- **D-005 — Accepted:** Keep the dashboard and deterministic analysis functional without the LLM so the live demo remains reliable.
+- **D-005 — Reversed:** Keep the dashboard functional without an LLM, but do not present deterministic templates as agent responses when the model is unavailable.
 - **D-006 — Accepted:** Limit prototype work to 2 hours 45 minutes and reserve at least one hour for the five-slide deck and rehearsal.
 - **D-007 — Accepted:** Use read-only SQLite tables and views plus a Python metric registry to prototype a production-style semantic layer without adding warehouse infrastructure.
 - **D-008 — Accepted:** Keep context, plan, and decisions in `AGENTS.md` as the single source of truth to prevent documentation drift.
@@ -126,6 +127,12 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 - **D-018 — Accepted:** Use the approved Digital, GA, and Store metric catalog with context-first lowercase identifiers, friendly display labels, an Orders × AOV Digital bridge, and a Traffic × Conversion × AOV Store bridge.
 - **D-019 — Accepted:** Limit the agent to five validated tools for summaries, revenue drivers, rankings, store diagnosis, and simple forecasting while blocking direct database access.
 - **D-020 — Accepted:** Use a four-week weekday median for the directional forecast because it remains stable on the short seasonal history and can be explained and holdout-tested clearly.
+- **D-021 — Reversed:** Remove the no-key response fallback and require a real model call for every AI analyst answer.
+- **D-022 — Accepted:** Use native Streamlit styling without custom CSS or typography to keep the interface minimal.
+- **D-023 — Reversed:** Replace direct DeepSeek V4.1 Flash access with a free OpenRouter model.
+- **D-024 — Accepted:** Make the AI Business Analyst page 1 and the Executive Dashboard page 2.
+- **D-025 — Accepted:** Use `nvidia/nemotron-3.5-lightning:free` through OpenRouter because it supports tool calling without model charges, accepting free-tier latency and rate-limit risk.
+- **D-026 — Accepted:** Centralize provider, model, endpoint, and key configuration so switching any OpenAI-compatible tool-calling model requires only configuration changes, with no hidden defaults or fallbacks.
 
 ### New decision template
 

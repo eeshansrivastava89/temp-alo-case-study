@@ -2,7 +2,7 @@
 
 A Streamlit prototype of an executive AI Business Analyst for Digital commerce, GA diagnostics, and Retail stores.
 
-The application uses governed metrics and deterministic analytical tools for every numerical claim. An optional OpenAI layer selects tools and explains their results; without an API key, the same demo questions use deterministic responses.
+The application uses governed metrics and deterministic analytical tools for every numerical claim. A configured OpenAI-compatible model selects those tools and explains their results; there is no hidden rule-based response fallback.
 
 ## Run locally
 
@@ -12,12 +12,16 @@ python3 -m venv .venv
 .venv/bin/streamlit run app.py
 ```
 
-Optional live AI configuration:
+LLM configuration is explicit and provider-independent. Example for OpenRouter and NVIDIA Nemotron 3.5 Lightning:
 
 ```bash
-export OPENAI_API_KEY="..."
-export OPENAI_MODEL="gpt-4o-mini"
+export LLM_PROVIDER="OpenRouter"
+export LLM_MODEL="nvidia/nemotron-3.5-lightning:free"
+export LLM_BASE_URL="https://openrouter.ai/api/v1"
+export LLM_API_KEY="..."
 ```
+
+Any OpenAI-compatible tool-calling provider can be selected by changing only these four settings. The app does not choose a default provider or model.
 
 ## Demo questions
 
@@ -38,11 +42,14 @@ The LLM cannot execute SQL directly. Digital commerce owns top-line Digital metr
 
 ## Project files
 
-- `app.py` — Streamlit interface
+- `app.py` — Streamlit page router
+- `pages/1_AI_Business_Analyst.py` — page 1: AI Business Analyst
+- `pages/2_Executive_Dashboard.py` — page 2: Executive Dashboard
+- `src/config.py` — provider-independent LLM configuration contract
 - `src/semantic_model.py` — approved metrics and dimensions
 - `src/repository.py` — validated read-only queries
 - `src/tools.py` — summaries, drivers, rankings, store diagnosis, and forecast
-- `src/agent.py` — LLM tool routing and deterministic fallback
+- `src/agent.py` — OpenRouter tool routing
 - `scripts/build_database.py` — reproducible Excel-to-SQLite ingestion
 - `notebooks/01_data_audit_and_semantic_contract.ipynb` — executed audit, visuals, assumptions, and contract
 - `AGENTS.md` — plan and decision history
