@@ -1,0 +1,9 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.streamlit/secrets.toml
+Case Study Data /
+Case Study Data .zip
