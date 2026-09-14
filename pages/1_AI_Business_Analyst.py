@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 import pandas as pd
 import streamlit as st
@@ -8,6 +9,7 @@ import streamlit as st
 from src.agent import run_agent
 from src.config import load_llm_config
 from src.repository import AnalyticsRepository
+from src.semantic_model import CONTEXT_VIEWS
 
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "analytics.db"
@@ -32,12 +34,22 @@ def repository() -> AnalyticsRepository:
     return AnalyticsRepository(DB_PATH)
 
 
+@st.cache_data
+def source_inventory() -> list[dict]:
+    return repository().source_inventory()
+
+
 def configured_llm():
     try:
         secret_values = dict(st.secrets)
     except Exception:
         secret_values = {}
     return load_llm_config(secret_values)
+
+
+def markdown_text(value: str) -> str:
+    """Prevent currency amounts from being parsed as inline LaTeX by Streamlit."""
+    return re.sub(r"(?<!\\)\$(?=\s?\d)", r"\\$", value)
 
 
 def money(value: float | None) -> str:
@@ -66,24 +78,37 @@ def metric_value(metric: dict) -> str:
         return money(value)
     if metric.get("format") == "percent":
         return f"{value:.1%}"
+    if metric.get("format") == "decimal":
+        return f"{value:,.2f}"
     return f"{value:,.0f}"
 
 
-def sources_for(evidence: list[dict]) -> list[str]:
-    sources = []
+def contexts_for(evidence: list[dict]) -> list[str]:
+    contexts = []
     for result in evidence:
         context = result.get("context")
         if context in SOURCE_LABELS:
-            sources.append(SOURCE_LABELS[context])
+            contexts.append(context)
         elif result.get("tool") == "diagnose_stores":
-            sources.append(SOURCE_LABELS["store"])
-        elif result.get("tool") == "forecast_metric":
+            contexts.append("store")
+        elif result.get("tool") in {"forecast_metric", "rank_performance"}:
             metric = result.get("metric", "")
-            sources.append(SOURCE_LABELS["ga" if metric.startswith("ga_") else "store" if metric.startswith("store_") else "digital"])
-        elif result.get("tool") == "rank_performance":
-            metric = result.get("metric", "")
-            sources.append(SOURCE_LABELS["ga" if metric.startswith("ga_") else "store" if metric.startswith("store_") else "digital"])
-    return list(dict.fromkeys(sources))
+            contexts.append("ga" if metric.startswith("ga_") else "store" if metric.startswith("store_") else "digital")
+    return list(dict.fromkeys(contexts))
+
+
+def sources_for(evidence: list[dict]) -> list[str]:
+    return [SOURCE_LABELS[context] for context in contexts_for(evidence)]
+
+
+def source_files_for(evidence: list[dict]) -> list[str]:
+    by_view = {item["metric_view"]: item for item in source_inventory()}
+    files = []
+    for context in contexts_for(evidence):
+        source = by_view.get(CONTEXT_VIEWS[context])
+        if source:
+            files.append(f"{source['source_file']} · {source['sheet']}")
+    return files
 
 
 def scope_line(evidence: list[dict]) -> str:
@@ -137,21 +162,61 @@ def render_driver_exhibit(results: list[dict]) -> None:
         )
 
 
+def render_store_profile_exhibit(result: dict) -> bool:
+    if result.get("dimension") != "store" or result.get("ranking_basis") != "value" or not result.get("results"):
+        return False
+    leader = result["results"][0]
+    if not leader.get("profile"):
+        return False
+    rows = []
+    for metric in leader["profile"]:
+        if metric["format"] == "percent":
+            movement = metric["change"]["absolute"]
+            change = "n/a" if movement is None else f"{movement * 100:+.1f} pp".replace("-", "−")
+        else:
+            change = percent(metric["change"]["percent"])
+        baseline_metric = {**metric, "value": metric["baseline"]}
+        rows.append(
+            {
+                "KPI": metric["label"],
+                "Current": metric_value(metric),
+                "Comparator": metric_value(baseline_metric),
+                "Change": change,
+            }
+        )
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch", height=283)
+    st.caption(
+        f"Store {leader['dimension_value']} ranks first among {result.get('entities_evaluated', 'all')} stores by current Store Revenue."
+    )
+    return True
+
+
 def render_rank_exhibit(result: dict) -> None:
+    if render_store_profile_exhibit(result):
+        return
+    ranking_basis = result.get("ranking_basis", "change")
+    value_column = "Current value" if ranking_basis == "value" else "Change"
     rows = [
         {
             result.get("dimension", "Dimension").title(): item["dimension_value"],
-            "Change": item["change"]["absolute"],
+            value_column: item["value"] if ranking_basis == "value" else item["change"]["absolute"],
             "Change %": percent(item["change"]["percent"]),
         }
         for item in result.get("results", [])[:5]
     ]
     if rows:
         frame = pd.DataFrame(rows)
-        st.bar_chart(frame.set_index(frame.columns[0])[["Change"]], horizontal=True)
+        st.bar_chart(frame.set_index(frame.columns[0])[[value_column]], horizontal=True)
         display = frame.copy()
-        display["Change"] = display["Change"].map(money)
+        if result.get("metric_format") == "currency":
+            display[value_column] = display[value_column].map(money)
+        elif result.get("metric_format") == "percent":
+            display[value_column] = display[value_column].map(lambda value: f"{value:.1%}")
+        else:
+            display[value_column] = display[value_column].map(lambda value: f"{value:,.0f}")
         st.dataframe(display, hide_index=True, width="stretch", height=215)
+        if len(result.get("results", [])) > 5:
+            st.caption(f"Showing 5 of {len(result['results'])} returned {result.get('dimension', 'items')} records.")
 
 
 def render_store_exhibit(result: dict) -> None:
@@ -170,6 +235,8 @@ def render_store_exhibit(result: dict) -> None:
         display = frame.copy()
         display["Revenue change"] = display["Revenue change"].map(money)
         st.dataframe(display, hide_index=True, width="stretch", height=215)
+        if len(result.get("stores", [])) > 5:
+            st.caption(f"Showing 5 of {len(result['stores'])} stores returned by the diagnosis.")
 
 
 def render_forecast_exhibit(results: list[dict]) -> None:
@@ -188,23 +255,53 @@ def render_forecast_exhibit(results: list[dict]) -> None:
 
 
 def render_primary_exhibit(evidence: list[dict]) -> None:
-    by_tool = {}
-    for result in evidence:
-        by_tool.setdefault(result.get("tool"), []).append(result)
-
-    st.caption("PRIMARY EXHIBIT")
-    if by_tool.get("diagnose_stores"):
-        render_store_exhibit(by_tool["diagnose_stores"][0])
-    elif by_tool.get("rank_performance"):
-        render_rank_exhibit(by_tool["rank_performance"][0])
-    elif by_tool.get("analyze_revenue_drivers"):
-        render_driver_exhibit(by_tool["analyze_revenue_drivers"])
-    elif by_tool.get("forecast_metric"):
-        render_forecast_exhibit(by_tool["forecast_metric"])
-    elif by_tool.get("get_performance_summary"):
-        render_summary_exhibit(by_tool["get_performance_summary"])
-    else:
+    supported_tools = {
+        "diagnose_stores",
+        "rank_performance",
+        "analyze_revenue_drivers",
+        "forecast_metric",
+        "get_performance_summary",
+    }
+    primary = next(
+        (result for result in reversed(evidence) if result.get("tool") in supported_tools and not result.get("error")),
+        None,
+    )
+    if primary is None:
         st.caption("No quantitative exhibit was required for this response.")
+        return
+
+    tool = primary["tool"]
+    if tool == "diagnose_stores":
+        title = "STORES WITH LARGEST STORE REVENUE DECLINES"
+    elif tool == "rank_performance":
+        if (
+            primary.get("dimension") == "store"
+            and primary.get("direction") == "top"
+            and primary.get("ranking_basis") == "value"
+            and primary.get("results")
+        ):
+            title = f"STORE REVENUE LEADER: STORE {primary['results'][0]['dimension_value']}"
+        else:
+            basis = "CURRENT VALUE" if primary.get("ranking_basis") == "value" else "CHANGE"
+            title = f"{primary.get('metric_label', 'METRIC').upper()} RANKED BY {basis}"
+    elif tool == "analyze_revenue_drivers":
+        title = "REVENUE-CHANGE DRIVERS"
+    elif tool == "forecast_metric":
+        title = f"{primary.get('metric_label', 'METRIC').upper()} FORECAST"
+    else:
+        title = f"{primary.get('context_label', 'PERFORMANCE').upper()} SUMMARY"
+    st.caption(title)
+
+    if tool == "diagnose_stores":
+        render_store_exhibit(primary)
+    elif tool == "rank_performance":
+        render_rank_exhibit(primary)
+    elif tool == "analyze_revenue_drivers":
+        render_driver_exhibit([primary])
+    elif tool == "forecast_metric":
+        render_forecast_exhibit([primary])
+    else:
+        render_summary_exhibit([primary])
 
 
 def render_method(message: dict) -> None:
@@ -223,7 +320,12 @@ def render_method(message: dict) -> None:
         with right:
             st.markdown("**Model and data**")
             st.caption(message.get("model", "Model unavailable"))
-            st.caption(" · ".join(sources_for(evidence)) or "No business source queried")
+            source_files = source_files_for(evidence)
+            if source_files:
+                for source in source_files:
+                    st.caption(source)
+            else:
+                st.caption("No business source queried")
             methods = list(dict.fromkeys(item.get("method") for item in evidence if item.get("method")))
             for method in methods:
                 st.caption(method)
@@ -231,14 +333,14 @@ def render_method(message: dict) -> None:
 
 def render_assistant_message(message: dict) -> None:
     evidence = message.get("evidence", [])
-    answer, exhibit = st.columns([3, 2])
-    with answer:
-        st.markdown(message["content"])
-    with exhibit:
-        render_primary_exhibit(evidence)
     scope = scope_line(evidence)
     if scope:
         st.caption(scope)
+    answer, exhibit = st.columns([3, 2])
+    with answer:
+        st.markdown(markdown_text(message["content"]))
+    with exhibit:
+        render_primary_exhibit(evidence)
     render_method(message)
 
 

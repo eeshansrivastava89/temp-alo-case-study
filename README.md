@@ -2,7 +2,7 @@
 
 A Streamlit prototype of an executive AI Business Analyst for Digital commerce, GA diagnostics, and Retail stores.
 
-The application uses governed metrics and deterministic analytical tools for every numerical claim. A configured OpenAI-compatible model selects those tools and explains their results; there is no hidden rule-based response fallback. Answers use a short executive narrative, one compact exhibit, an explicit period and source line, and a collapsed method summary instead of raw tool JSON.
+The application uses governed metrics and deterministic analytical tools for every numerical claim. A configured OpenAI-compatible model selects those tools and explains their results; there is no hidden rule-based response fallback. Answers use precise metric names, units, dates, and comparators alongside the decisive tool's compact exhibit, with methods and exact source files available in one collapsed section.
 
 ## Run locally
 

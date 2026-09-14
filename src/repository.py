@@ -179,15 +179,16 @@ class AnalyticsRepository:
         with self.connect() as connection:
             return [dict(row) for row in connection.execute(sql)]
 
-    def store_operating_metrics(self, period: Period) -> list[dict[str, Any]]:
-        sql = """
+    def store_operating_metrics(self, period: Period, *, use_ly: bool = False) -> list[dict[str, Any]]:
+        suffix = "ly" if use_ly else "ty"
+        sql = f"""
             SELECT
                 store_id,
                 MIN(opening_date) AS opening_date,
-                SUM(store_revenue_ty) AS revenue,
-                SUM(store_traffic_ty) AS traffic,
-                SUM(store_orders_ty) AS orders,
-                SUM(store_units_ty) AS units
+                SUM(store_revenue_{suffix}) AS revenue,
+                SUM(store_traffic_{suffix}) AS traffic,
+                SUM(store_orders_{suffix}) AS orders,
+                SUM(store_units_{suffix}) AS units
             FROM vw_retail_store_metrics
             WHERE date BETWEEN ? AND ?
             GROUP BY store_id

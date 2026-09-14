@@ -40,8 +40,8 @@ The prototype should help an executive understand performance, quantify business
 - Do not calculate combined Digital + Retail revenue until currency and accounting definitions are confirmed
 - Period rules: weeks run Monday–Sunday; use the latest complete week by default, compare partial weeks only with matched prior-week days, use supplied LY fields without inventing LY dates, and use calendar months until a shared fiscal calendar is provided
 - Agent access: five validated tools (`get_performance_summary`, `analyze_revenue_drivers`, `rank_performance`, `diagnose_stores`, and `forecast_metric`) backed by a safe query builder; never arbitrary LLM-generated SQL
-- Response contract: preserve model freedom to choose tools, then limit the final narrative to one conclusion-led headline, two or three quantified findings, one action, and one material caveat within 160 words
-- Explainability: show period, comparison, and sources beside a compact table or chart, with one collapsed method-and-tools section; never show raw chain-of-thought or tool JSON
+- Response contract: preserve model freedom to choose tools, then require precise metric names, units, exact period references, ranking bases, and percentage-point distinctions within one conclusion-led headline, two or three findings, one action, and one material caveat in 160 words
+- Explainability: show the exact period, comparison, and sources above each response; render the final decisive tool result as the primary exhibit; escape currency symbols before Markdown rendering; and keep methods collapsed without raw chain-of-thought or tool JSON
 - Keep database access behind a repository interface so a production warehouse can replace SQLite
 - Primary deployment: Streamlit Community Cloud; Fly.io is the fallback
 - Keep the GitHub repository private unless the supplied data is confirmed safe to publish
@@ -75,9 +75,9 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 - [x] **DONE — 15 min:** Implemented the Python metric registry, read-only repository, and validated query builder.
 - [x] **DONE — 30 min:** Implemented deterministic tools for KPI summaries, period comparisons, revenue drivers, store ranking, and seasonal forecasting.
 - [x] **DONE — 30 min:** Built a minimal native Streamlit experience with the AI Business Analyst on page 1 and Executive Dashboard on page 2.
-- [x] **DONE — 25 min:** Added OpenRouter/Nemotron tool routing, grounded explanations, recommendations, and follow-up context without a hidden response fallback.
+- [x] **DONE — 25 min:** Added provider-independent tool routing, grounded explanations, recommendations, and follow-up context without a hidden response fallback.
 - [x] **DONE — 10 min:** Validated metric contracts, read-only access, driver reconciliation, forecasts, invalid-query blocking, Streamlit rendering, and the primary analyst interaction.
-- [ ] **BLOCKED — 5 min:** Code is pushed to the private `temp-alo-case-study` GitHub repository; Streamlit Community Cloud deployment awaits browser authorization and app creation.
+- [x] **DONE — 5 min:** Pushed the private `temp-alo-case-study` repository and deployed the public Streamlit Community Cloud app with its LLM secret configured separately.
 
 ### Demo acceptance checklist
 
@@ -139,6 +139,7 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 - **D-028 — Accepted:** Give the model freedom to select analytical tools while enforcing a concise conclusion-led executive response contract.
 - **D-029 — Accepted:** Pair each answer with one compact table or chart and an always-visible scope line, then combine tool trace and evidence metadata in one collapsed method section without raw chain-of-thought or JSON.
 - **D-030 — Accepted:** Generate the source/schema page from SQLite and the metric registry, and render the existing notebook directly through Streamlit without curated duplicate content or generated files.
+- **D-031 — Accepted:** Escape currency symbols before Markdown rendering, require every figure to name its metric, unit, dates, and comparator, and drive the primary exhibit from the final decisive tool result so prose and evidence cannot diverge.
 
 ### New decision template
 

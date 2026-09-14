@@ -49,6 +49,30 @@ class AnalyticsContractTests(unittest.TestCase):
         changes = [store["revenue_change"]["absolute"] for store in result["stores"]]
         self.assertEqual(changes, sorted(changes))
         self.assertEqual(len(changes), 5)
+        attention = result["attention_group"]
+        self.assertAlmostEqual(
+            attention["gross_store_revenue_decline"] + attention["offset_from_other_stores"],
+            result["portfolio"]["change"]["absolute"],
+        )
+
+    def test_best_store_ranks_on_current_value_and_includes_profile(self) -> None:
+        result = rank_performance(
+            self.repo,
+            "store_revenue",
+            "store",
+            direction="top",
+            ranking_basis="value",
+            limit=1,
+        )
+        all_stores = self.repo.metric_by_dimension(
+            "store_revenue", "store", self.repo.resolve_period("latest_complete_week")
+        )
+        self.assertEqual(result["results"][0]["value"], max(row["value"] for row in all_stores))
+        profile_labels = {metric["label"] for metric in result["results"][0]["profile"]}
+        self.assertEqual(
+            profile_labels,
+            {"Store Revenue", "Store Traffic", "Store Orders", "Store Units", "Store Conversion", "Store AOV", "Store UPT"},
+        )
 
     def test_forecast_is_positive_and_validated(self) -> None:
         result = forecast_metric(self.repo, "digital_revenue")

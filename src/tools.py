@@ -150,6 +150,43 @@ def analyze_revenue_drivers(
     return result
 
 
+def _store_profile(current: dict[str, Any], baseline: dict[str, Any]) -> list[dict[str, Any]]:
+    def ratio(numerator: float | None, denominator: float | None) -> float | None:
+        return float(numerator / denominator) if numerator is not None and denominator else None
+
+    measures = [
+        ("store_revenue", "Store Revenue", "currency", current.get("revenue"), baseline.get("revenue")),
+        ("store_traffic", "Store Traffic", "integer", current.get("traffic"), baseline.get("traffic")),
+        ("store_orders", "Store Orders", "integer", current.get("orders"), baseline.get("orders")),
+        ("store_units", "Store Units", "integer", current.get("units"), baseline.get("units")),
+        (
+            "store_conversion_rate",
+            "Store Conversion",
+            "percent",
+            ratio(current.get("orders"), current.get("traffic")),
+            ratio(baseline.get("orders"), baseline.get("traffic")),
+        ),
+        (
+            "store_aov",
+            "Store AOV",
+            "currency",
+            ratio(current.get("revenue"), current.get("orders")),
+            ratio(baseline.get("revenue"), baseline.get("orders")),
+        ),
+        (
+            "store_upt",
+            "Store UPT",
+            "decimal",
+            ratio(current.get("units"), current.get("orders")),
+            ratio(baseline.get("units"), baseline.get("orders")),
+        ),
+    ]
+    return [
+        {"metric": metric, "label": label, "format": display_format, "value": value, "baseline": base, "change": _change(value, base)}
+        for metric, label, display_format, value, base in measures
+    ]
+
+
 def rank_performance(
     repo: AnalyticsRepository,
     metric: str,
@@ -157,8 +194,11 @@ def rank_performance(
     period: str = "latest_complete_week",
     comparison: str = "previous_period",
     direction: str = "bottom",
+    ranking_basis: str = "change",
     limit: int = 8,
 ) -> dict[str, Any]:
+    if ranking_basis not in {"value", "change"}:
+        raise ValueError("ranking_basis must be 'value' or 'change'")
     definition = get_metric(metric)
     current_period = repo.resolve_period(period)
     baseline_period, use_ly, baseline_label = _comparison(repo, current_period, comparison)
@@ -173,16 +213,37 @@ def rank_performance(
         base = float(baseline.get(key) or 0)
         rows.append({"dimension_value": key, "value": value, "baseline": base, "change": _change(value, base)})
     reverse = direction == "top"
-    rows.sort(key=lambda row: row["change"]["absolute"] or 0, reverse=reverse)
+    if ranking_basis == "value":
+        rows.sort(key=lambda row: row["value"], reverse=reverse)
+    else:
+        rows.sort(key=lambda row: row["change"]["absolute"] or 0, reverse=reverse)
+    selected = rows[: max(1, min(limit, 20))]
+
+    if dimension == "store":
+        current_profiles = {
+            str(row["store_id"]): row for row in repo.store_operating_metrics(current_period)
+        }
+        baseline_profiles = {
+            str(row["store_id"]): row for row in repo.store_operating_metrics(baseline_period, use_ly=use_ly)
+        }
+        for row in selected:
+            store_id = row["dimension_value"]
+            row["profile"] = _store_profile(
+                current_profiles.get(store_id, {}), baseline_profiles.get(store_id, {})
+            )
+
     return {
         "tool": "rank_performance",
         "metric": metric,
         "metric_label": definition.label,
+        "metric_format": definition.format,
         "dimension": dimension,
         "direction": direction,
+        "ranking_basis": ranking_basis,
+        "entities_evaluated": len(rows),
         "period": current_period.__dict__,
         "comparison": {"type": comparison, "label": baseline_label},
-        "results": rows[: max(1, min(limit, 20))],
+        "results": selected,
         "notes": [CONTEXT_NOTES[definition.context]],
     }
 
@@ -235,12 +296,29 @@ def diagnose_stores(
         )
 
     findings.sort(key=lambda row: row["revenue_change"]["absolute"])
+    selected = findings[: max(1, min(limit, 20))]
+    portfolio_revenue = sum(float(row["revenue"]) for row in current.values())
+    portfolio_baseline = sum(float(row["revenue"]) for row in prior.values())
+    portfolio_change = portfolio_revenue - portfolio_baseline
+    selected_decline = sum(min(0.0, row["revenue_change"]["absolute"]) for row in selected)
     return {
         "tool": "diagnose_stores",
         "period": current_period.__dict__,
         "comparison": {"type": comparison, "label": prior_period.label},
-        "stores": findings[: max(1, min(limit, 20))],
-        "method": "Stores ranked by absolute revenue decline; operating driver uses Shapley decomposition.",
+        "portfolio": {
+            "metric": "store_revenue",
+            "label": "Store Revenue",
+            "value": portfolio_revenue,
+            "baseline": portfolio_baseline,
+            "change": _change(portfolio_revenue, portfolio_baseline),
+        },
+        "attention_group": {
+            "stores_returned": len(selected),
+            "gross_store_revenue_decline": selected_decline,
+            "offset_from_other_stores": portfolio_change - selected_decline,
+        },
+        "stores": selected,
+        "method": "Stores ranked by absolute Store Revenue decline; operating driver uses Shapley decomposition.",
         "notes": [CONTEXT_NOTES["store"]],
     }
 
