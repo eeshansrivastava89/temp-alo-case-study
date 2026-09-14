@@ -1,7 +1,5 @@
 """Read-only SQLite repository with validated metric and period queries."""
 
-from __future__ import annotations
-
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
