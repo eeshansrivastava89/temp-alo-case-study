@@ -44,6 +44,16 @@ class AnalyticsRepository:
         with self.connect() as connection:
             return connection.execute("SELECT MAX(date) FROM dim_date").fetchone()[0]
 
+    def available_period(self) -> Period:
+        with self.connect() as connection:
+            row = connection.execute("SELECT MIN(date) AS start, MAX(date) AS end FROM dim_date").fetchone()
+        return Period(
+            "full_available_period",
+            f"Full available period: {row['start']} to {row['end']}",
+            row["start"],
+            row["end"],
+        )
+
     def source_inventory(self) -> list[dict[str, Any]]:
         with self.connect() as connection:
             tables = [
@@ -97,6 +107,9 @@ class AnalyticsRepository:
             ]
 
     def resolve_period(self, period_id: str = "latest_complete_week") -> Period:
+        if period_id == "full_available_period":
+            return self.available_period()
+
         with self.connect() as connection:
             if period_id == "latest_complete_week":
                 row = connection.execute(

@@ -20,6 +20,8 @@ CONTEXT_NOTES = {
 
 def _comparison(repo: AnalyticsRepository, period: Period, comparison: str) -> tuple[Period, bool, str]:
     if comparison == "previous_period":
+        if period.id == "full_available_period":
+            raise ValueError("The full available period has no preceding matched window; use comparison='ly'")
         prior = repo.previous_period(period)
         return prior, False, prior.label
     if comparison == "ly":

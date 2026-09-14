@@ -20,6 +20,16 @@ class AnalyticsContractTests(unittest.TestCase):
         period = self.repo.resolve_period("latest_complete_week")
         self.assertEqual((period.start, period.end), ("2026-06-22", "2026-06-28"))
 
+    def test_full_available_period_uses_all_63_dates_and_ly_comparison(self) -> None:
+        period = self.repo.resolve_period("full_available_period")
+        self.assertEqual((period.start, period.end, period.days), ("2026-05-03", "2026-07-04", 63))
+        summary = get_performance_summary(
+            self.repo, "digital", period="full_available_period", comparison="ly"
+        )
+        self.assertTrue(all(metric["baseline"] is not None for metric in summary["metrics"]))
+        with self.assertRaises(ValueError):
+            get_performance_summary(self.repo, "digital", period="full_available_period")
+
     def test_database_connection_is_read_only(self) -> None:
         with self.repo.connect() as connection:
             with self.assertRaises(sqlite3.OperationalError):

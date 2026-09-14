@@ -24,12 +24,12 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "get_performance_summary",
-            "description": "Return governed KPIs for Digital commerce, GA diagnostics, or Retail stores.",
+            "description": "Return governed KPIs for Digital commerce, GA diagnostics, or Retail stores. The full available period must use the provided LY comparison.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "context": {"type": "string", "enum": ["digital", "ga", "store"]},
-                    "period": {"type": "string", "enum": ["latest_complete_week", "latest_7_days", "latest_complete_month"]},
+                    "period": {"type": "string", "enum": ["full_available_period", "latest_complete_week", "latest_7_days", "latest_complete_month"]},
                     "comparison": {"type": "string", "enum": ["previous_period", "ly"]},
                 },
                 "required": ["context"],
@@ -41,12 +41,12 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "analyze_revenue_drivers",
-            "description": "Quantify Digital Orders × AOV or Store Traffic × Conversion × AOV revenue drivers.",
+            "description": "Quantify Digital Orders × AOV or Store Traffic × Conversion × AOV revenue drivers. The full available period must use the provided LY comparison.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "context": {"type": "string", "enum": ["digital", "store"]},
-                    "period": {"type": "string", "enum": ["latest_complete_week", "latest_7_days", "latest_complete_month"]},
+                    "period": {"type": "string", "enum": ["full_available_period", "latest_complete_week", "latest_7_days", "latest_complete_month"]},
                     "comparison": {"type": "string", "enum": ["previous_period", "ly"]},
                 },
                 "required": ["context"],
@@ -64,7 +64,7 @@ TOOL_SCHEMAS = [
                 "properties": {
                     "metric": {"type": "string", "enum": ["digital_revenue", "ga_revenue", "ga_sessions", "ga_conversion_rate", "store_revenue"]},
                     "dimension": {"type": "string", "enum": ["country", "state", "channel", "device", "store"]},
-                    "period": {"type": "string", "enum": ["latest_complete_week", "latest_7_days", "latest_complete_month"]},
+                    "period": {"type": "string", "enum": ["full_available_period", "latest_complete_week", "latest_7_days", "latest_complete_month"]},
                     "comparison": {"type": "string", "enum": ["previous_period", "ly"]},
                     "direction": {"type": "string", "enum": ["top", "bottom"]},
                     "ranking_basis": {"type": "string", "enum": ["value", "change"]},
@@ -124,7 +124,9 @@ def run_agent(
         base_url=config.base_url,
         timeout=120,
     )
-    system = f"""You are an executive business analyst. Data is available through {repo.data_through()}.
+    available = repo.available_period()
+    system = f"""You are an executive business analyst. The complete source window is {available.start} to {available.end} ({available.days} daily dates spanning three calendar months, not three complete months).
+Use period=full_available_period and comparison=ly when the user asks for the full dataset, entire period, or all available data; a preceding matched {available.days}-day window is unavailable.
 Use the supplied tools for every numerical claim. Never calculate from memory or invent unavailable data.
 Digital commerce is the top-line source. GA metrics must remain labeled GA and are diagnostic.
 Retail category metrics and combined Digital + Store revenue are blocked.

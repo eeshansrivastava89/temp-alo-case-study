@@ -38,7 +38,7 @@ The prototype should help an executive understand performance, quantify business
 - Naming convention: lowercase `<context>_<metric>_<period>` identifiers in SQLite and Python, such as `ga_revenue_ty` and `store_orders_ly`, with title-cased display labels such as `GA Revenue` and `Store Orders`
 - Source ownership: Digital commerce for top-line Digital KPIs, Digital marketing for labeled GA diagnostics, Retail store for Retail KPIs, and Retail category blocked pending clarification
 - Do not calculate combined Digital + Retail revenue until currency and accounting definitions are confirmed
-- Period rules: weeks run Monday–Sunday; use the latest complete week by default, compare partial weeks only with matched prior-week days, use supplied LY fields without inventing LY dates, and use calendar months until a shared fiscal calendar is provided
+- Period rules: source coverage is May 3–July 4, 2026 (63 dates spanning three calendar months); support the full available window against supplied LY, use Monday–Sunday complete weeks by default, compare partial weeks only with matched prior-week days, and use calendar months until a shared fiscal calendar is provided
 - Agent access: five validated tools (`get_performance_summary`, `analyze_revenue_drivers`, `rank_performance`, `diagnose_stores`, and `forecast_metric`) backed by a safe query builder; never arbitrary LLM-generated SQL
 - Response contract: preserve model freedom to choose tools, then require precise metric names, units, exact period references, ranking bases, and percentage-point distinctions within one conclusion-led headline, two or three findings, one action, and one material caveat in 160 words
 - Explainability: show the exact period, comparison, and sources above each response; render the final decisive tool result as the primary exhibit; escape currency symbols before Markdown rendering; and keep methods collapsed without raw chain-of-thought or tool JSON
@@ -140,6 +140,7 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 - **D-029 — Accepted:** Pair each answer with one compact table or chart and an always-visible scope line, then combine tool trace and evidence metadata in one collapsed method section without raw chain-of-thought or JSON.
 - **D-030 — Accepted:** Generate the source/schema page from SQLite and the metric registry, and render the existing notebook directly through Streamlit without curated duplicate content or generated files.
 - **D-031 — Accepted:** Escape currency symbols before Markdown rendering, require every figure to name its metric, unit, dates, and comparator, and drive the primary exhibit from the final decisive tool result so prose and evidence cannot diverge.
+- **D-032 — Accepted:** Describe the dataset as 63 daily dates from May 3 through July 4 spanning three calendar months, and support full-window analysis against supplied LY without implying three complete months or an unavailable prior 63-day window.
 
 ### New decision template
 

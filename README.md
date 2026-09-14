@@ -64,4 +64,4 @@ The LLM cannot execute SQL directly. Digital commerce owns top-line Digital metr
 
 ## Known limitations
 
-The prototype does not have marketing spend, inventory, promotions, pricing, product costs, an official fiscal calendar, category hierarchy metadata, or GA implementation history. Forecasts are directional seasonal baselines rather than planning forecasts.
+The available source window contains 63 daily dates from May 3 through July 4, 2026, spanning three calendar months rather than three complete months; full-window comparisons use the supplied LY fields. The prototype does not have marketing spend, inventory, promotions, pricing, product costs, an official fiscal calendar, category hierarchy metadata, or GA implementation history. Forecasts are directional seasonal baselines rather than planning forecasts.

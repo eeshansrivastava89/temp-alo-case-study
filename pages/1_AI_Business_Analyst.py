@@ -345,11 +345,12 @@ def render_assistant_message(message: dict) -> None:
 
 
 repo = repository()
+available = repo.available_period()
 llm_config, missing_settings = configured_llm()
 model_label = llm_config.display_name if llm_config else "LLM not configured"
 
 st.title("AI Business Analyst")
-st.caption(f"Data through {repo.data_through()} · {model_label}")
+st.caption(f"Data available {available.start} to {available.end} · {available.days} days · {model_label}")
 
 if missing_settings:
     st.warning(f"Add the required Streamlit Secrets to enable the analyst: {', '.join(missing_settings)}")
@@ -357,11 +358,12 @@ if missing_settings:
 with st.expander("Available analysis"):
     st.markdown(
         """
-- Digital and Store performance for the latest complete week, latest seven days, or latest complete month
+- Source coverage: May 3–July 4, 2026—63 daily dates spanning three calendar months, not three complete months
+- Digital and Store performance for the full available window, latest complete month, latest complete week, or latest seven days
 - Revenue drivers, GA channel and device diagnostics, and stores requiring attention
 - Directional seven-day forecasts with validation results
 
-Digital commerce is the top-line source. GA metrics remain labeled. Retail category analysis and combined Digital + Store revenue are unavailable because their definitions do not reconcile.
+The full-window comparison uses the supplied LY fields because an earlier matched 63-day period is not included. Digital commerce is the top-line source. GA metrics remain labeled. Retail category analysis and combined Digital + Store revenue are unavailable because their definitions do not reconcile.
 """
     )
 
@@ -369,7 +371,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 suggestions = [
-    "How did the business perform last week?",
+    "How did the business perform across the full available period?",
     "Why did revenue change last week?",
     "Which stores need attention, and what should we do?",
     "What is the seven-day revenue forecast?",
