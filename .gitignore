@@ -1,9 +1,49 @@
+# macOS / editor files
 .DS_Store
+._*
+.idea/
+.vscode/
+*~
+~$*
+
+# Python environments and generated files
+.venv/
+venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.venv/
-venv/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Notebook scratch files
+.ipynb_checkpoints/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
 .streamlit/secrets.toml
-Case Study Data /
-Case Study Data .zip
+
+# Supplied raw case-study files; the deployed app uses the governed database
+Case Study Data*/
+Case Study Data*.zip
+*.xlsx
+*.xls
+
+# SQLite runtime sidecars
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Generated presentation build assets and exports
+presentation/assets/
+presentation/*.pdf
+
+# Internal working documents; retained locally but excluded from submission
+/AGENTS.md
+/Data_Science_Analytics_Case_Study_AI_Business_Analyst_Agent.md

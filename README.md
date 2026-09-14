@@ -54,7 +54,6 @@ The LLM cannot execute SQL directly. Digital commerce owns top-line Digital metr
 - `src/agent.py` — provider-independent tool routing and structured presentation contract
 - `scripts/build_database.py` — reproducible Excel-to-SQLite ingestion
 - `notebooks/01_data_audit_and_semantic_contract.ipynb` — executed audit, visuals, assumptions, and contract
-- `AGENTS.md` — plan and decision history
 
 ## Validate
 
