@@ -2,7 +2,7 @@
 
 A Streamlit prototype of an executive AI Business Analyst for Digital commerce, GA diagnostics, and Retail stores.
 
-The application uses governed metrics and deterministic analytical tools for every numerical claim. A configured OpenAI-compatible model selects those tools and explains their results; there is no hidden rule-based response fallback.
+The application uses governed metrics and deterministic analytical tools for every numerical claim. A configured OpenAI-compatible model selects those tools and explains their results; there is no hidden rule-based response fallback. Answers use a short executive narrative, one compact exhibit, an explicit period and source line, and a collapsed method summary instead of raw tool JSON.
 
 ## Run locally
 
@@ -45,6 +45,8 @@ The LLM cannot execute SQL directly. Digital commerce owns top-line Digital metr
 - `app.py` — Streamlit page router
 - `pages/1_AI_Business_Analyst.py` — page 1: AI Business Analyst
 - `pages/2_Executive_Dashboard.py` — page 2: Executive Dashboard
+- `pages/3_Data_Sources_and_Schema.py` — page 3: database-derived source catalog, metric model, and schema explorer
+- `pages/4_Analysis_Notebook.py` — page 4: direct rendering of the executed notebook
 - `src/config.py` — provider-independent LLM configuration contract
 - `src/semantic_model.py` — approved metrics and dimensions
 - `src/repository.py` — validated read-only queries

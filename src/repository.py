@@ -44,6 +44,58 @@ class AnalyticsRepository:
         with self.connect() as connection:
             return connection.execute("SELECT MAX(date) FROM dim_date").fetchone()[0]
 
+    def source_inventory(self) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            tables = [
+                row["name"]
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'fact_%' ORDER BY name"
+                )
+            ]
+            inventory = []
+            for table in tables:
+                row = connection.execute(
+                    f"""SELECT
+                            COUNT(*) AS rows,
+                            MIN(date) AS date_min,
+                            MAX(date) AS date_max,
+                            MIN(source_file) AS source_file,
+                            MIN(source_sheet) AS source_sheet
+                        FROM {table}"""
+                ).fetchone()
+                inventory.append(
+                    {
+                        "source_file": row["source_file"],
+                        "sheet": row["source_sheet"],
+                        "fact_table": table,
+                        "metric_view": f"vw_{table.removeprefix('fact_')}_metrics",
+                        "rows": row["rows"],
+                        "date_min": row["date_min"],
+                        "date_max": row["date_max"],
+                    }
+                )
+            return inventory
+
+    def database_objects(self) -> list[str]:
+        with self.connect() as connection:
+            return [
+                row["name"]
+                for row in connection.execute(
+                    """SELECT name FROM sqlite_master
+                       WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'
+                       ORDER BY type, name"""
+                )
+            ]
+
+    def object_schema(self, object_name: str) -> list[dict[str, Any]]:
+        if object_name not in self.database_objects():
+            raise ValueError(f"Unknown database object: {object_name}")
+        with self.connect() as connection:
+            return [
+                {"position": row["cid"] + 1, "column": row["name"], "type": row["type"] or "derived"}
+                for row in connection.execute(f"PRAGMA table_info({object_name})")
+            ]
+
     def resolve_period(self, period_id: str = "latest_complete_week") -> Period:
         with self.connect() as connection:
             if period_id == "latest_complete_week":

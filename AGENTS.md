@@ -27,11 +27,11 @@ The prototype should help an executive understand performance, quantify business
 - Keep documentation concise enough to reuse in the final deck.
 - Keep exploratory research, validation evidence, visuals, and semantic-contract conclusions in one executed notebook.
 - Do not make the application import or execute the notebook; move approved ETL and runtime logic into scripts and modules.
-- Prefer DRY and KISS: keep each rule or configuration in one obvious place, avoid provider-specific branches, and do not add hidden fallbacks or hardcoded runtime choices.
+- Prefer DRY and KISS: keep each rule or configuration in one obvious place, avoid provider-specific branches, and do not add hidden fallbacks, hardcoded runtime choices, or manually curated copies of generated analysis.
 
 ### Technical and analytical guardrails
 
-- Application: native Streamlit components with no custom CSS or typography; page 1 is the AI Business Analyst and page 2 is the Executive Dashboard
+- Application: native Streamlit components with no custom CSS or typography; pages are AI Business Analyst, Executive Dashboard, database-derived Data Sources & Schema, and direct rendering of the executed Analysis Notebook
 - Data layer: read-only SQLite with four cleaned fact tables (`fact_digital_commerce`, `fact_digital_marketing`, `fact_retail_store`, and restricted `fact_retail_category`), a shared `dim_date`, and SQL metric views
 - Preserve source file and source-row metadata in fact tables, keep TY and paired LY measures in separate columns, and use the original workbooks plus ingestion script as the raw record instead of duplicating raw tables in SQLite
 - Semantic layer: Python registry for governed metrics, dimensions, filters, formats, and valid grains
@@ -40,6 +40,8 @@ The prototype should help an executive understand performance, quantify business
 - Do not calculate combined Digital + Retail revenue until currency and accounting definitions are confirmed
 - Period rules: weeks run Monday–Sunday; use the latest complete week by default, compare partial weeks only with matched prior-week days, use supplied LY fields without inventing LY dates, and use calendar months until a shared fiscal calendar is provided
 - Agent access: five validated tools (`get_performance_summary`, `analyze_revenue_drivers`, `rank_performance`, `diagnose_stores`, and `forecast_metric`) backed by a safe query builder; never arbitrary LLM-generated SQL
+- Response contract: preserve model freedom to choose tools, then limit the final narrative to one conclusion-led headline, two or three quantified findings, one action, and one material caveat within 160 words
+- Explainability: show period, comparison, and sources beside a compact table or chart, with one collapsed method-and-tools section; never show raw chain-of-thought or tool JSON
 - Keep database access behind a repository interface so a production warehouse can replace SQLite
 - Primary deployment: Streamlit Community Cloud; Fly.io is the fallback
 - Keep the GitHub repository private unless the supplied data is confirmed safe to publish
@@ -131,8 +133,12 @@ Use `TODO`, `IN PROGRESS`, `BLOCKED`, and `DONE` tags; check an item only after 
 - **D-022 — Accepted:** Use native Streamlit styling without custom CSS or typography to keep the interface minimal.
 - **D-023 — Reversed:** Replace direct DeepSeek V4.1 Flash access with a free OpenRouter model.
 - **D-024 — Accepted:** Make the AI Business Analyst page 1 and the Executive Dashboard page 2.
-- **D-025 — Accepted:** Use `nvidia/nemotron-3.5-lightning:free` through OpenRouter because it supports tool calling without model charges, accepting free-tier latency and rate-limit risk.
+- **D-025 — Reversed:** Do not use the free OpenRouter model because interview-demo reliability matters more than avoiding model charges.
 - **D-026 — Accepted:** Centralize provider, model, endpoint, and key configuration so switching any OpenAI-compatible tool-calling model requires only configuration changes, with no hidden defaults or fallbacks.
+- **D-027 — Accepted:** Configure the deployed app for direct DeepSeek V4.1 Flash access using the generic LLM settings without changing application code.
+- **D-028 — Accepted:** Give the model freedom to select analytical tools while enforcing a concise conclusion-led executive response contract.
+- **D-029 — Accepted:** Pair each answer with one compact table or chart and an always-visible scope line, then combine tool trace and evidence metadata in one collapsed method section without raw chain-of-thought or JSON.
+- **D-030 — Accepted:** Generate the source/schema page from SQLite and the metric registry, and render the existing notebook directly through Streamlit without curated duplicate content or generated files.
 
 ### New decision template
 
