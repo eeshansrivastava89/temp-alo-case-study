@@ -1,4 +1,4 @@
-# ALO Performance Intelligence
+# AI Business Analyst — Digital & Retail
 
 A Streamlit prototype of an executive AI Business Analyst for Digital commerce, GA diagnostics, and Retail stores.
 

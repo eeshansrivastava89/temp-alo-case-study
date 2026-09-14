@@ -40,9 +40,11 @@ Case Study Data*.zip
 *.db-shm
 *.db-wal
 
-# Generated presentation build assets and exports
-presentation/assets/
-presentation/*.pdf
+# Presentation working files and exports
+presentation/
+*.key
+*.pptx
+*.pdf
 
 # Internal working documents; retained locally but excluded from submission
 /AGENTS.md
