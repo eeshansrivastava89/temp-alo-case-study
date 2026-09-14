@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -10,6 +11,8 @@ from src.tools import analyze_revenue_drivers, diagnose_stores, forecast_metric,
 
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "analytics.db"
+DASHBOARD_CACHE_VERSION = 2
+
 
 @st.cache_resource
 def repository() -> AnalyticsRepository:
@@ -17,7 +20,8 @@ def repository() -> AnalyticsRepository:
 
 
 @st.cache_data(show_spinner=False)
-def dashboard_data() -> dict:
+def dashboard_data(cache_version: int) -> dict:
+    del cache_version
     repo = repository()
     return {
         "digital": get_performance_summary(repo, "digital"),
@@ -59,6 +63,15 @@ def display_delta(metric: dict) -> str:
     return "No baseline" if change is None else f"{change:+.1%} vs prior week"
 
 
+def forecast_baseline_period(forecast: dict) -> dict:
+    if forecast.get("baseline_period"):
+        return forecast["baseline_period"]
+    days = len(forecast["daily_forecast"])
+    baseline_end = date.fromisoformat(forecast["forecast_period"]["start"]) - timedelta(days=1)
+    baseline_start = baseline_end - timedelta(days=days - 1)
+    return {"start": baseline_start.isoformat(), "end": baseline_end.isoformat(), "days": days}
+
+
 def render_metrics(summary: dict) -> None:
     columns = st.columns(len(summary["metrics"]))
     for column, metric in zip(columns, summary["metrics"], strict=True):
@@ -71,7 +84,7 @@ def driver_frame(result: dict) -> pd.DataFrame:
     ).set_index("Driver")
 
 
-data = dashboard_data()
+data = dashboard_data(DASHBOARD_CACHE_VERSION)
 period = data["digital"]["period"]
 
 st.title("Executive Dashboard")
@@ -131,7 +144,7 @@ for column, forecast in zip(forecast_columns, [data["digital_forecast"], data["s
         f"{forecast['change_vs_recent']['percent']:+.1%} vs latest 7 days",
     )
     forecast_period = forecast["forecast_period"]
-    baseline_period = forecast["baseline_period"]
+    baseline_period = forecast_baseline_period(forecast)
     column.caption(
         f"Forecast: {forecast_period['start']} to {forecast_period['end']} · "
         f"Observed baseline: {baseline_period['start']} to {baseline_period['end']} "

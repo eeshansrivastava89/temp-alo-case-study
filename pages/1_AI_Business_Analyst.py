@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
 from pathlib import Path
 import re
 
@@ -13,6 +14,7 @@ from src.semantic_model import CONTEXT_VIEWS
 
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "analytics.db"
+MESSAGE_SCHEMA_VERSION = 2
 
 TOOL_LABELS = {
     "get_performance_summary": "Performance summary",
@@ -111,11 +113,21 @@ def source_files_for(evidence: list[dict]) -> list[str]:
     return files
 
 
+def forecast_baseline_period(forecast: dict) -> dict:
+    if forecast.get("baseline_period"):
+        return forecast["baseline_period"]
+    days = len(forecast["daily_forecast"])
+    baseline_end = date.fromisoformat(forecast["forecast_period"]["start"]) - timedelta(days=1)
+    baseline_start = baseline_end - timedelta(days=days - 1)
+    return {"start": baseline_start.isoformat(), "end": baseline_end.isoformat(), "days": days}
+
+
 def scope_line(evidence: list[dict]) -> str:
     period = next((item.get("period") for item in evidence if item.get("period")), None)
     comparison = next((item.get("comparison") for item in evidence if item.get("comparison")), None)
-    forecast_period = next((item.get("forecast_period") for item in evidence if item.get("forecast_period")), None)
-    baseline_period = next((item.get("baseline_period") for item in evidence if item.get("baseline_period")), None)
+    forecast_result = next((item for item in evidence if item.get("forecast_period")), None)
+    forecast_period = forecast_result.get("forecast_period") if forecast_result else None
+    baseline_period = forecast_baseline_period(forecast_result) if forecast_result else None
     pieces = []
     if forecast_period:
         pieces.append(f"Forecast: {forecast_period.get('start')} to {forecast_period.get('end')}")
@@ -256,7 +268,7 @@ def render_forecast_exhibit(results: list[dict]) -> None:
         totals = []
         for result in results[:2]:
             forecast = result["forecast_period"]
-            baseline = result["baseline_period"]
+            baseline = forecast_baseline_period(result)
             totals.extend(
                 [
                     {
@@ -390,8 +402,9 @@ The full-window comparison uses the supplied LY fields because an earlier matche
 """
     )
 
-if "messages" not in st.session_state:
+if st.session_state.get("message_schema_version") != MESSAGE_SCHEMA_VERSION:
     st.session_state.messages = []
+    st.session_state.message_schema_version = MESSAGE_SCHEMA_VERSION
 
 suggestions = [
     "How did the business perform across the full available period?",
